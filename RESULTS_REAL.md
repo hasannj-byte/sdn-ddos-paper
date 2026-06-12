@@ -48,7 +48,28 @@ Confirmed: the proposed architecture has **46,977 trainable parameters** (not th
 ~80,000 originally stated). The paper has been corrected accordingly.
 
 ## Phase 1 — Cross-dataset (Table tab:cross_dataset_results)
-Pending: requires the InSDN dataset (not yet downloaded).
+
+Train on CICDDoS2019 (leakage-free), test zero-shot on InSDN (the CICDDoS2019-fitted
+scaler applied unchanged), then briefly adapt on 5% of InSDN and re-test on held-out InSDN.
+InSDN from HF mirror `Sharukesh/INSDN` (343,889 flows; columns mapped from its
+abbreviated CICFlowMeter naming; binary `target` label).
+
+| Train -> Test | Zero-shot Acc | ZS F1 | ZS PR-AUC | Adapted Acc | Adapted F1 |
+|---|---|---|---|---|---|
+| CICDDoS2019 -> CICDDoS2019 (ref) | 0.9996 | 0.9998 | 1.0000 | - | - |
+| **CICDDoS2019 -> InSDN** | **0.3659** | 0.3973 | 0.8784 | **0.9649** | 0.9785 |
+| CICDDoS2019 -> Testbed | pending (needs Phase 3 capture) | | | | |
+
+### Honest reading of Phase 1
+- **Zero-shot transfer collapses**: 0.9996 (same-dataset) -> 0.366 accuracy on InSDN.
+  This is the generalization gap that same-dataset evaluations hide, shown on real data
+  and directly supporting the paper's cross-dataset critique.
+- **Brief adaptation recovers it**: fine-tuning on 5% of InSDN lifts accuracy to 0.965
+  (F1 0.979). The same adaptation mechanism used for drift closes the domain gap.
+- **Nuance**: zero-shot PR-AUC stays 0.878 while accuracy is 0.366 -- the model still
+  ranks attack vs benign well, but the 0.5 threshold is miscalibrated for InSDN. Part of
+  the failure is calibration; adaptation fixes it cleanly. (A threshold recalibration
+  baseline would be a fair thing to add.)
 
 ## Phase 2 — Concept drift (Table tab:drift_results)
 
