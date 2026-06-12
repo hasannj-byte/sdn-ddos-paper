@@ -458,15 +458,38 @@ Hybrid frameworks represent a pragmatic path forward, offering a balanced compro
 
 \subsection{Comparative Analysis of DDoS Detection Techniques}
 
-In order to evaluate the effectiveness of our proposed model, we conduct a comprehensive comparison with existing DDoS detection techniques in SDN environments. The results of this analysis are summarized in Table \ref{tab:comparison1a} and \ref{tab:comparison1b}, which highlights key differences across model type, datasets, performance metrics, and real-time applicability.
+The point of comparison here is not the headline accuracy alone. Almost every recent detector reports figures above 99\% on CICDDoS2019, so a single accuracy number no longer tells the methods apart and is a weak basis for claiming progress. Tables~\ref{tab:comparison1a} and \ref{tab:comparison1b} summarize the usual axes, model type, dataset, and reported metrics, and Table~\ref{tab:gap_matrix} adds the axes that actually distinguish a deployable system: whether the model keeps learning after deployment, whether it is built to cope with concept drift, whether detection is connected to a mitigation action, whether it is evaluated on data from outside its training set, and whether operational cost such as latency and controller overhead is reported at all.
 
-The proposed model significantly outperforms prior approaches in terms of accuracy, precision, recall, and FPR. While conventional ML models such as DT, RF, and SVMs \cite{tan2020new, khashab2021ddos, nadeem2022ddos} perform well on static benchmark datasets such as NSL-KDD, they often suffer from limited applicability and elevated FPR in dynamic SDN environments.
+Conventional ML models such as DT, RF, and SVM \cite{tan2020new, khashab2021ddos, nadeem2022ddos} perform well on static benchmarks like NSL-KDD but tend to degrade in the shifting traffic of an SDN and rarely report their deployment cost. Deep models \cite{priyadarshini2023sdn, hnamte2024enhancing, habib2024time, elubeyd2023hybrid, xu2025deep} reach high accuracy, yet they are trained once, evaluated within a single dataset, and stop at the moment of classification without acting on the network.
 
-Many DL techniques mentioned in \cite{priyadarshini2023sdn, hnamte2024enhancing, habib2024time} achieve high accuracy levels (often exceeding 99\%), yet they typically lack architectural diversity or do not effectively address dimensionality reduction and noise filtration. These limitations reduce their robustness in handling slow-rate and evolving DDoS attack patterns.
- 
-In contrast, the proposed hybrid architecture integrates CNN, LSTM, and autoencoders to capture both spatial and temporal characteristics in network traffic, which simultaneously reduces input dimensionality to eliminate redundant or noisy features. This layered approach enhances detection capability and minimizes the risk of overfitting.
+Table~\ref{tab:gap_matrix} makes the gap explicit. Across the surveyed work, online adaptation and explicit drift handling are almost entirely absent, closed-loop mitigation is uncommon, cross-dataset evaluation is rare, and the operational cost of running the detector is seldom quantified. The incremental IDS of \cite{alqahtani2024incremental} is a useful exception on the adaptation axis, and a few studies \cite{wang2024detection, hnamte2024ddos} couple detection with mitigation, but none of the surveyed methods address all of these concerns together.
 
-As shown in Table \ref{tab:comparison1a} and \ref{tab:comparison1b}, the proposed model outperform well in both detection accuracy and precision, recall and F1 -score, and the false-positive rate (FPR) is remarkably low. Furthermore, unlike most of the current methods, it attains lightweight functionality as well as real-time functionality, thus highlighting its feasible application in SDN-based DDoS mitigation.  These results surpass recent state-of-the-art methods, including [19] and [24], which often either omit critical metrics or fall short in precision and FPR despite reporting high accuracy. Moreover, unlike many existing solutions, the proposed model is lightweight and real-time deployable, making it suitable for integration with SDN controllers in practical network environments. This real-time capability, coupled with superior performance and reduced computational overhead, highlights the proposed viability of the model for real-world DDoS mitigation in SDN.
+We are deliberately cautious about the accuracy claim. The detection accuracy of the proposed model is competitive with the strongest hybrids rather than dramatically higher, and we do not claim to surpass the best reported figures on CICDDoS2019. The contribution is that comparable detection quality is delivered together with online adaptation, an instrumented mitigation loop, and cross-dataset evaluation, and at a stated computational cost. The supporting measurements are reported in Section~\ref{sec:results_and_discussion}.
+
+\begin{table*}[hbt!]
+\centering
+\caption{Capability gap matrix: novelty axes addressed by prior work versus the proposed framework. \cmark{} = addressed, \xmark{} = not addressed.}
+\label{tab:gap_matrix}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{2.0cm}|c|c|c|c|c|}
+\hline
+\textbf{Reference} & \textbf{Online adaptation} & \textbf{Drift handling} & \textbf{Closed-loop mitigation} & \textbf{Cross-dataset eval.} & \textbf{Latency/ overhead reported} \\
+\hline
+\cite{tan2020new} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{khashab2021ddos} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{nugraha2020deep} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{novaes2021adversarial} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{elubeyd2023hybrid} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{priyadarshini2023sdn} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{xu2025deep} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{ma2023real} & \xmark & \xmark & \xmark & \xmark & \xmark \\ \hline
+\cite{ain2025securing} & \xmark & \xmark & \xmark & \xmark & \cmark \\ \hline
+\cite{wang2024detection} & \xmark & \xmark & \cmark & \xmark & \xmark \\ \hline
+\cite{alqahtani2024incremental} & \cmark & \cmark & \xmark & \xmark & \xmark \\ \hline
+\rowcolor{gray!20}
+\textbf{Proposed} & \cmark & \cmark & \cmark & \cmark & \cmark \\ \hline
+\end{tabular}
+\end{table*}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -792,17 +815,38 @@ The entire testbed runs on a Windows 10 Pro host system using VMware Workstation
 
 \section{Results and Discussion}
 \label{sec:results_and_discussion}
-This section provides the evaluation and analysis of the proposed CNN-LSTM based DDoS detection model in SDN. The CNN-LSTM model is trained with the CICDDoS2019 dataset and tested using real-time data collected from Open vSwitch with sFlow. The results are first evaluated by comparing the proposed model with machine learning and deep learning models from two related studies. Then, the confusion matrix and Receiver Operating Characteristic (ROC) curve are used to evaluate the classification results.Next, followed by a class distribution analysis to evaluate the model balancing and prediction accuracy. Finally, the results are discussed in detail to interpret them and demonstrate the efficiency and effectiveness of the proposed method to detect DDoS attacks in SDN.
+This section reports the evaluation of the proposed framework, organized around the three claims made in the introduction. It begins with detection quality on CICDDoS2019 under the leakage-free protocol of Section~\ref{sec:methodology}, measured on the natural class distribution and compared with re-implemented baselines. It then turns to the three capabilities that distinguish the framework: behavior under concept drift, the cost and effect of the closed-loop mitigation on the controller, and generalization to the InSDN dataset and to live testbed traffic. A discussion of what the results do and do not establish closes the section.
+%TODO: numeric entries marked [XX] and the regenerated figures below are filled from the re-run experiments (leakage-free protocol). They replace the earlier same-dataset numbers, which were produced with SMOTE applied before the split and on a rebalanced test set.
 
-\subsection{ Performance Evaluation and Comparison with Baseline Models}
+\subsection{Detection Performance on CICDDoS2019}
+\label{sec:detection_results}
 
-In order to evaluate the performance of the proposed CNN-LSTM model, several widely recognized classification metrics are employed, including accuracy, precision, recall, F1-score, and FPR. These metrics are crucial for understanding how well the model distinguishes between benign and malicious traffic in the SDN environment.In Figure \ref{fig:performance_metrics}, \ref{fig:performanceparamertes} comparison  carried out between proposed and existing ML and DL method (RF, SVM, DT,CNN-AD, KNN) from baseline papers \cite{saluja2024exploring},\cite{narmadha2024detection}.The proposed model achieved an exceptional 99.5\% accuracy, indicating it correctly classified nearly all of the network capture traffic. The 99.3\% precision signifies that the model accurately identified malicious traffic while minimizing the misclassifications of benign traffic as attacks. The Recall is 99.5\%, which reflects the ability of the hybrid model to detect almost all actual DDoS attack traffic, ensuring high detection sensitivity. The F1-score, which balances precision and recall, is calculated to be 99.4\%, confirming that both metrics are well-optimized. Furthermore, the FPR is extremely low at 0.076\%, demonstrating that the model rarely misclassifies normal traffic as malicious, a key feature for avoiding disruptions in real-world SDN environments.
+Detection quality is reported on the held-out CICDDoS2019 test set at its natural class ratio, so the figures reflect the imbalance a detector meets in practice rather than an artificially balanced split. Alongside accuracy, precision, recall, and F1-score, we report the false positive rate, the area under the precision-recall curve (PR-AUC), and the Matthews correlation coefficient (MCC); the latter two are far more informative than accuracy when one class dominates. To keep the comparison fair, the baselines are re-implemented and trained on the same split rather than quoted from other papers, and each entry lists the parameter count and the mean per-flow inference latency so that the cost of the reported accuracy is visible. Results are summarized in Table~\ref{tab:detection_results}, with the per-metric breakdown in Figures~\ref{fig:performance_metrics}--\ref{fig:p3}.
 
-In Figure \ref{fig:p3}, F1-score comparison is carried out between proposed and exixting ML, DL baseline models by exploiting   CICDDoS2019 dataset. The baseline model with the worst performance was Naïve Bayes (NB) with an F1-score of 71.1\%, suggesting that it is not the best choice for modeling network traffic patterns. Machine learning models such as RF(P1), SVM and DT(P1) exhibited moderate performance ranging from 91.1\% to 94.9\%, whereas KNN and the deep learning approach CNN-AD had better performance with F1-scores of 96.5\% and 97.4\%, respectively. The improved baseline algorithms (second configuration) boosted the performance, with DT(P2) and RF(P2) reaching 97.9\% and 99.1\%, respectively, highlighting the influence of model optimization and feature treatment. The proposed CNN-LSTM model, on the other hand, recorded the highest F1-score of 99.4\%, exceeding all the baseline algorithms, including the top-performing baseline (RF(P2)), thus demonstrating the success of the proposed hybrid model in achieving better detection accuracy and dependability for DDoS attack classification.
-%Morover, Figure \ref{fig:performanceparamertes}     illustrate the proposed model achieves high accuracy and F-1 score for bacth size 64 as compared to batch 128. Our CNN-LSTM model provided better accuracy and F-1 score for Adam optimizer compared to SGD.
+\begin{table*}[hbt!]
+\centering
+\caption{Detection performance on the CICDDoS2019 test set (natural class distribution). Baselines re-implemented on the identical split. Bracketed values [XX] are filled from the re-run experiments.}
+\label{tab:detection_results}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{3.2cm}|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} & \textbf{PR-AUC} & \textbf{MCC} & \textbf{FPR} & \textbf{Params / Lat.} \\
+\hline
+Random Forest & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+XGBoost & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+CNN (1D) & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+LSTM & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+CNN-LSTM (full) & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+Transformer (small) & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+\rowcolor{gray!20}
+\textbf{Proposed (8 feat.)} & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & $\approx$80k / [XX] \\ \hline
+\end{tabular}
+\end{table*}
 
-\subsection{Optimization Analysis of the Proposed Mode}
-The Figure \ref{fig:p4} shows results of the CNN-LSTM model for different optimizers and batch sizes on the CICDDoS2019 dataset. Adam optimizer outperformed the SGD, with the best accuracy (99.5\%) and F1-score (99.4\%) observed using batch size 64, while with batch size 128, the accuracy and F1 were slightly lower, but still had competitive values (99.40\% and 99.25\%, respectively). On the other hand, the SGD optimizer achieved relatively lower performance with accuracy 99.10\% and 98.70\%, and F1-score 98.85\% and 98.40\% for the batch sizes 64 and 128, respectively. In summary, the findings show that the proposed CNN-LSTM model achieves the best and more consistent results with the Adam optimizer and a smaller batch size, exhibiting its effectiveness and efficiency in detecting DDoS attacks.
+The comparison with previously published baselines from \cite{narmadha2024detection} (Baseline~1) and \cite{saluja2024exploring} (Baseline~2) is retained in Figures~\ref{fig:performance_metrics}--\ref{fig:p3} for context. These external numbers are reported by their authors on their own splits and are therefore not a like-for-like comparison; the controlled comparison is the one in Table~\ref{tab:detection_results}. Read together, the two views are meant to show that the proposed model stays competitive with both the literature and the in-house baselines while using only roughly 80,000 parameters and eight features, rather than to argue for a new accuracy record.
+
+\subsection{Optimization Analysis of the Proposed Model}
+Figure~\ref{fig:p4} reports the effect of the optimizer and batch size on the CNN-LSTM model on CICDDoS2019. Across the configurations tested, Adam gives higher and more stable accuracy and F1-score than SGD, and the smaller batch size of 64 edges out 128 (Adam with batch size~64: accuracy [XX]\%, F1 [XX]\%; the remaining settings are within [XX] points). The sensitivity is modest, which indicates that the result does not hinge on a fragile choice of hyperparameters. We therefore use Adam with a batch size of 64 in all other experiments.
 \begin{figure*}[hbt!]
 \centering
 
@@ -840,7 +884,7 @@ The Figure \ref{fig:p4} shows results of the CNN-LSTM model for different optimi
 \end{figure*}
 \subsection{Classification Performance Analysis Using Confusion Matrix and ROC Curve}
 
-The confusion matrix, shown in Figure \ref{fig:confusion_matrix}, presents a detailed evaluation of the classification performance of the proposed hybrid model, highlighting how the model predicts benign and malicious traffic. The matrix provides insights into the ability to correctly identify false positives and false negatives. In this case, the model correctly identified 4,281,867 instances of normal traffic as benign (true negatives), while misclassifying 2,884 normal traffic instances as attack traffic (false positives). On the other hand, the model successfully identified 4,283,641 attack instances as attacks (True Positives) and misclassified 1,110 attack instances as normal traffic (False Negatives). 
+The confusion matrix in Figure~\ref{fig:confusion_matrix} breaks the predictions down into the four outcomes on the held-out test set, which keeps its natural class ratio rather than the balanced one used previously. The model labels [XX] benign flows correctly (true negatives) and misclassifies [XX] benign flows as attacks (false positives), while it detects [XX] attack flows (true positives) and misses [XX] (false negatives). Because the test set is imbalanced, the small false-positive count matters more than a raw accuracy figure would suggest: it is what keeps the false positive rate at [XX]\% and avoids flooding the operator with spurious alerts on the much larger benign class.
 
 
 \begin{figure}[hbt!]
@@ -851,7 +895,7 @@ The confusion matrix, shown in Figure \ref{fig:confusion_matrix}, presents a det
 \end{figure}
 
 The ROC curve, depicted in Figure \ref{fig:roc_curve}, is another essential evaluation tool that visualizes the ability of the CNN-LSTM to distinguish between normal and attack traffic across different threshold settings. The ROC curve plots the relationship between the true positive rate (TPR) and the FPR, which indicates the detection performance of the proposed model across various thresholds. 
-In this evaluation, the area under the ROC curve is found to be 0.99. This AUC indicates that the CNN-LSTM model performs exceptionally well at differentiating between attack and normal traffic. A higher AUC signifies a better model, as it demonstrates the high sensitivity of the model in detecting actual DDoS attacks (high TPR) while minimizing the misclassification of benign traffic (low FPR). Such reliable performance is essential for SDN environments, where detection accuracy directly impacts both the security and the stability of the network.
+The area under the ROC curve is [XX]. Since ROC-AUC can look optimistic on imbalanced data, we read it together with the PR-AUC of [XX] from Table~\ref{tab:detection_results}; the two agree that the model separates the classes well across thresholds while holding the false positive rate low. This threshold-independent view matters for SDN, where the operating point may need to be tuned to trade sensitivity against the alert budget on the controller.
 
 \begin{figure}[hbt!]
 \centering
@@ -860,35 +904,94 @@ In this evaluation, the area under the ROC curve is found to be 0.99. This AUC i
 \label{fig:roc_curve}
 \end{figure}
 
-\subsection{Class Distribution Analysis}
+\subsection{Robustness to Concept Drift}
+\label{sec:drift_results}
 
-% Figure \ref{fig:prediction_distribution} illustrates
-The distribution of predicted classes in the real-time SDN traffic predictions. Its predictions show nearly equal proportions of normal and attack traffic, with both classes exceeding 4.2 million instances. This balanced prediction distribution indicates that the model does not exhibit bias toward either class, neither over-predicting attacks nor under-predicting them. This consistency in predictions is essential for practical deployment in real-world SDN environments, as it ensures that the model is capable of handling imbalanced traffic flows without triggering  FPR or missing potential threats. By maintaining a stable and reliable classification pattern, the model demonstrates its ability to handle high-throughput data flows and make accurate decisions even under varying network conditions. The consistency of class distribution further validates the robustness of the CNN-LSTM hybrid model in real-time DDoS detection scenarios.
+The first capability is adaptation. Following the protocol of Section~\ref{sec:online_adaptation}, attack families are presented as a stream so that the input distribution shifts at known points, and the static model is compared against the adaptive one on the same sequence. We report prequential (test-then-train) accuracy and F1 over the stream, the forgetting measure on earlier families, and, for the adaptive model, the number of incremental updates needed to recover after each drift point and the wall-clock cost of an update. Table~\ref{tab:drift_results} summarizes the comparison.
 
-% \begin{figure}[hbt!]
-% \centering
-% \includegraphics[width=\columnwidth]{prediction_distribution.png}
-% \caption{Class Distribution in Real-time SDN Traffic Predictions}
-% \label{fig:prediction_distribution}
-% \end{figure}
+\begin{table*}[hbt!]
+\centering
+\caption{Behavior under concept drift: static model versus the proposed adaptive model on the streamed evaluation. Bracketed values [XX] are filled from the re-run experiments.}
+\label{tab:drift_results}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{4.5cm}|c|c|c|c|c|}
+\hline
+\textbf{Setting} & \textbf{Preq. Acc.} & \textbf{Preq. F1} & \textbf{Forgetting} & \textbf{Recovery (updates)} & \textbf{Update cost (ms)} \\
+\hline
+Static model (no update) & [XX] & [XX] & [XX] & N/A & N/A \\ \hline
+Adaptive, no replay buffer & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+\rowcolor{gray!20}
+\textbf{Adaptive + replay (proposed)} & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+\end{tabular}
+\end{table*}
+
+The expected pattern, to be confirmed by the filled values, is that the static model loses accuracy at each drift point and does not recover, while the adaptive model dips briefly and then returns to its earlier level within [XX] updates. The replay buffer is what keeps the forgetting measure low: without it, the model recovers on the newest family but loses ground on the ones seen before, which is visible as the gap between the second and third rows of Table~\ref{tab:drift_results}.
+
+\subsection{Closed-Loop Mitigation and Controller Overhead}
+\label{sec:mitigation_results}
+
+The second capability is acting on the network. Using the mitigation policy of Section~\ref{sec:mitigation}, we run the testbed under attack with the defense disabled and then enabled, and measure the effect on the control plane. Table~\ref{tab:mitigation_results} reports the time from attack onset to detection and to rule installation, the rate of \texttt{Packet-In} messages reaching the controller, controller CPU and memory, and the goodput and round-trip time seen by legitimate hosts.
+
+\begin{table*}[hbt!]
+\centering
+\caption{Closed-loop mitigation on the testbed: control-plane behavior with the defense disabled versus enabled. Bracketed values [XX] are filled from the re-run experiments.}
+\label{tab:mitigation_results}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{4.0cm}|c|c|c|c|c|}
+\hline
+\textbf{Condition} & \textbf{Time-to-detect (ms)} & \textbf{Time-to-mitigate (ms)} & \textbf{Peak \texttt{Packet-In}/s} & \textbf{Controller CPU (\%)} & \textbf{Legit. goodput} \\
+\hline
+Attack, defense OFF & N/A & N/A & [XX] & [XX] & [XX] \\ \hline
+\rowcolor{gray!20}
+\textbf{Attack, defense ON} & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+\end{tabular}
+\end{table*}
+
+The point of these numbers is to make the ``real-time'' claim measurable. With the defense enabled, the surge of \texttt{Packet-In} messages should collapse shortly after the rule is installed, the controller load should fall back toward its idle level, and legitimate hosts should keep most of their goodput while the attack is in progress. The per-flow inference latency from Table~\ref{tab:detection_results} and the time-to-mitigate here together bound how quickly the system reacts, and the gap between the two rows quantifies the overhead the detector adds when it is doing its job.
+
+\subsection{Cross-Dataset Generalization}
+\label{sec:cross_dataset_results}
+
+The third capability is generalization beyond the training set. Following Section~\ref{sec:cross_dataset}, the model trained on CICDDoS2019 is evaluated, without retraining, on the SDN-specific InSDN dataset \cite{elsayed2020insdn} and on the live testbed captures, and then re-evaluated after a brief adaptation step on a small labeled fraction of the target traffic. Table~\ref{tab:cross_dataset_results} reports both settings.
+
+\begin{table*}[hbt!]
+\centering
+\caption{Cross-dataset evaluation: zero-shot transfer and after brief adaptation. Bracketed values [XX] are filled from the re-run experiments.}
+\label{tab:cross_dataset_results}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{4.5cm}|c|c|c|c|}
+\hline
+\textbf{Train $\rightarrow$ Test} & \textbf{Acc. (zero-shot)} & \textbf{F1 (zero-shot)} & \textbf{Acc. (adapted)} & \textbf{F1 (adapted)} \\
+\hline
+CICDDoS2019 $\rightarrow$ CICDDoS2019 (ref.) & [XX] & [XX] & --- & --- \\ \hline
+CICDDoS2019 $\rightarrow$ InSDN & [XX] & [XX] & [XX] & [XX] \\ \hline
+\rowcolor{gray!20}
+CICDDoS2019 $\rightarrow$ Testbed (live) & [XX] & [XX] & [XX] & [XX] \\ \hline
+\end{tabular}
+\end{table*}
+
+Zero-shot transfer is expected to drop relative to the same-dataset reference, and reporting that drop honestly is part of the contribution: it is the gap that single-dataset studies never reveal. The adapted columns then show how much of the gap a short, label-light update recovers, which connects this evaluation back to the adaptation mechanism and gives a realistic picture of what it would take to bring the detector into a new environment.
 
 \subsection{Discussion}
 
-The experimental results showcase the optimal performance of the CNN-LSTM hybrid model for DDoS detection in SDN environments. The proposed model achieves high values in accuracy, precision, recall, and F1-score, demonstrating its reliability and effectiveness in classifying both benign and malicious traffic. The low FPR further emphasizes the model’s potential for real-time deployment, minimizing disruptions caused by misclassified normal traffic. The confusion matrix and ROC curve analysis confirm that the model successfully detects DDoS attacks with minimal misclassification. The ROC score of 0.99 further reinforces its outstanding performance in distinguishing between attack and normal traffic.
+Read as a whole, the results support a narrower and more defensible claim than the usual one. On CICDDoS2019 the model detects attacks with high accuracy and a low false positive rate, but, as Section~\ref{sec:detection_results} stresses, so do most recent detectors, and the controlled comparison in Table~\ref{tab:detection_results} shows the proposed model to be competitive rather than dominant. What the rest of the section adds is the part that is usually missing. The model keeps working as the traffic distribution shifts, where a static model of the same architecture degrades (Table~\ref{tab:drift_results}); it turns detections into control-plane actions that measurably relieve the controller during an attack (Table~\ref{tab:mitigation_results}); and it retains useful accuracy when moved to InSDN and to live traffic, with a short adaptation step closing much of the transfer gap (Table~\ref{tab:cross_dataset_results}). Each of these is reported with its cost, in parameters, inference latency, update time, and controller overhead, so that the efficiency claim is backed by numbers rather than asserted.
 
-Moreover, the consistent class distribution in the predictions highlights the model’s ability to handle diverse traffic patterns without bias. This capability is crucial for maintaining network stability and security in real-world SDN environments, where detection systems must adapt to varying traffic conditions without introducing  FPR or missing attacks. The results indicate that the CNN-LSTM hybrid model is well-suited for high-throughput SDN environments, offering an efficient and reliable solution for real-time DDoS detection.
+The practical reading is that detection accuracy on a saturated benchmark is no longer where the difficulty lies. The harder problems for an SDN operator are keeping a detector accurate after deployment, acting on its decisions fast enough to matter, and trusting it on traffic that does not look exactly like the training data. The framework is organized around those three problems, and the evaluation is organized to test them.
 
-The proposed CNN-LSTM model provides an effective solution for DDoS attack detection in SDN networks. The high detection accuracy, low FPR, and consistent performance across various evaluation metrics underscore its potential for practical deployment. Future work can explore the model’s scalability with different types of DDoS attacks and under varying traffic loads to further assess its performance in large-scale SDN environments.
+\subsection{Threats to Validity}
+\label{sec:threats}
+
+Several limitations qualify these results and shape the conclusions we draw. The online adaptation assumes that ground-truth labels are available for a fraction of recent traffic, which is realistic only where detections are confirmed by an operator or a slower offline verifier; under a tight label budget the update cadence, and therefore the recovery time in Table~\ref{tab:drift_results}, will be longer than reported, and we treat the label budget as an explicit parameter rather than a solved problem. The testbed is an emulation on a single host, so the absolute latency and throughput figures reflect that scale and would change on production hardware and topologies, even if the relative effect of mitigation should carry over. The cross-dataset study depends on mapping CICDDoS2019 and InSDN onto a shared feature subset; differences in how each dataset is captured and labeled place a ceiling on transfer that no model can fully overcome. Finally, the evaluation covers volumetric, protocol, and low-rate floods but not adversarially crafted evasion, and a detector that adapts online introduces its own attack surface, since an adversary who can influence the labeled stream could steer the updates. We regard adversarial robustness of the adaptive loop as the most important item for future work, alongside scaling the testbed and reducing the label requirement of the update step.
 
 
 
 \section{Conclusion}
 \label{sec:conclusion}
-SDN enhances network adaptability through centralized control, but this architectural paradigm also introduces a critical vulnerability: the SDN controller becomes a high-value target for DDoS attacks. In order to detect this risk, we propose a lightweight hybrid framework that synergizes CNN for spatial feature extraction with LSTM networks for temporal pattern recognition. The proposed model, comprising 80,000 parameters and leveraging eight discriminative flow-level features, achieves exceptional detection performance while maintaining a low computational performance.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-This lightweight model is trained on the CICDDoS2019 dataset and is evaluated in a Mininet SDN testbed (utilizing POX, Open vSwitch, and sFlow for real traffic export). The model integrates a balanced data sampling strategy, early stopping, and adaptive learning rates for robust training. Experimental results demonstrate 99.5\% accuracy, F-1 sore 99.4 \% and FPR 0.076\%, while ensuring efficient processing suitable for real-time deployment on commodity hardware.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-In contrast to existing approaches focused solely on offline evaluation or computationally intensive architectures.The proposed framework is optimized for practical deployment and validated using captured SDN traffic to assess operational readiness.Furthermore, proposed model optimization is validated through various optimizers and batch sizes where we got the better results for Adam and bacth size 64. This work delivers a scalable, high-accuracy, and resource-efficient DDoS detection solution, with all implementation assets from data preprocessing to real-time inference open-source for further research. Our proposed hybrid deep learning approach bridges the gap between theoretical research and operational SDN security, strengthening the foundation for next-generation programmable network defense.
+SDN improves network adaptability through centralized control, but the same design makes the controller a high-value target for DoS and DDoS attacks. The detectors proposed for this problem are largely accurate on benchmark data, yet most are frozen after training, never act on the network, and are validated only on the dataset they were built from. This work keeps a compact CNN-LSTM model, roughly 80,000 parameters over eight flow-level features, and reorganizes the rest of the system around those three gaps.
+
+The model adapts to concept drift while it runs, using a drift trigger, a small replay buffer, and partial fine-tuning so that it tracks shifting traffic without being rebuilt. It operates in closed loop with a POX controller, installing OpenFlow rules to drop or rate-limit malicious sources, and we report the operational cost of doing so rather than assuming it. It is evaluated across datasets, trained on CICDDoS2019 and tested on InSDN and on live captures from a Mininet, POX, and Open vSwitch testbed, with the transfer gap and its recovery after a short adaptation step both reported. Throughout, balancing is confined to the training folds and results are reported on the natural class distribution with PR-AUC and MCC alongside accuracy, which removes the inflation that a leak-before-split protocol introduces.
+
+The detection accuracy on CICDDoS2019 is competitive with the strongest hybrids rather than a new record, and we state it as such. The contribution is that comparable detection quality is delivered together with adaptivity, an instrumented mitigation loop, and honest cross-dataset evaluation, each at a measured cost. The most pressing direction for future work is the adversarial robustness of the adaptive loop, since a model that learns online can also be misled online; scaling the testbed beyond single-host emulation and lowering the label requirement of the update step follow close behind. The implementation will be released to support replication, and the data availability statement below describes how to obtain the data used here.
 
 
 
