@@ -4,21 +4,23 @@
 \usepackage{colortbl}   % For coloring table lines
 \usepackage{xcolor}     % For color definitions
 
+\usepackage{pifont}     % checkmark/cross symbols used in comparison tables
+\providecommand{\cmark}{\ding{51}}%
+\providecommand{\xmark}{\ding{55}}%
+
 \usepackage{steinmetz}
 \graphicspath{{./images/}}
-\specialissue{Morphologic Hard and Soft Tissue Changes following Tooth
-Extraction in Different Maxilla and Mandible Anatomic Areas: Current
-Knowledge, Prognostic Factors Analysis, and Clinical Management}
+%\specialissue{}
 
 \articletype{ORIGINAL ARTICLE}%
-\subarticletype{Particle Technology and Fluidization}
+%\subarticletype{}
 
 \received{20 January 2023}
 \revised{21 January 2023}
 \accepted{22 January 2023}
-\journal{AIChE Journal}
+\journal{International Journal of Intelligent Systems}
 \volume{0}
-\copyyear{2024}
+\copyyear{2026}
 \startpage{1}
 \articledoi{10.1002/0000}
 
@@ -30,10 +32,10 @@ Knowledge, Prognostic Factors Analysis, and Clinical Management}
 
 
 \begin{document}
-\title{A Lightweight Hybrid CNN-LSTM Approach for Real-Time DoS/DDoS Detection in Software-Defined Networks}
+\title{An Adaptive, Closed-Loop CNN-LSTM Framework for Real-Time DoS/DDoS Detection and Mitigation in Software-Defined Networks under Concept Drift}
 %\subtitle{Subtitle}
-\transtitle{A Lightweight Hybrid CNN-LSTM Approach for Real-Time DoS/DDoS Detection in Software-Defined Networks}
-\subtranstitle{trans-subtitle}
+%\transtitle{}
+%\subtranstitle{}
 \author[1]{Tahir Ali}
 \author[1]{Hasan Mahmood}
 \author[2]{Muddasar Naeem}[https://orcid.org/0000-0003-0815-4883]
@@ -45,8 +47,8 @@ Knowledge, Prognostic Factors Analysis, and Clinical Management}
 
 
 
-\authormark{TAYLOR \textsc{et al.}}
-\titlemark{PLEASE INSERT YOUR ARTICLE TITLE HERE}
+\authormark{ALI \textsc{et al.}}
+\titlemark{Adaptive Closed-Loop CNN-LSTM for DDoS Detection and Mitigation in SDN}
 
 \address[1]{\orgdiv{Department of Electronics }\orgname{Quaid-i-Azam University  }%
 \orgaddress{\state{Islamabad, }\country{Pakistan}}}
@@ -69,24 +71,24 @@ Knowledge, Prognostic Factors Analysis, and Clinical Management}
 
 %\fundingInfo{...}
 
-\keywords{Software-defined networking | DDoS Detection | Network Security | Deep Learning | Hybrid CNN-LSTM model}
+\keywords{Software-defined networking | DDoS detection and mitigation | Concept drift | Online learning | Cross-dataset generalization | Hybrid CNN-LSTM}
 
-\transkeywords{DEM | flexible cylindrical particle | internal friction angle | particle deformation | shear stress}
+%\transkeywords{}
 
-\abstract[ABSTRACT]{Software-Defined Networking (SDN) optimizes network flexibility through centralized control. Nevertheless, its centralized structure makes it susceptible to Distributed Denial-of-Service (DDoS) attacks. In particular, the SDN controller becomes a key target of DDoS attack. To address this challenge, a lightweight hybrid deep learning (DL) model is proposed that combines Convolutional Neural Networks (CNN) and Long Short-Term Memory (LSTM). CNN extracts the spatial traffic features while the LSTM component captures temporal patterns to improve attack detection rate. The proposed model contains only 80,000 trainable parameters and employs eight key traffic features, achieving better detection performance with limited computational cost. The model is trained using the CICDDoS2019 dataset and is evaluated in a Mininet-based SDN environment using POX, Open vSwitch, and sFlow for real-time traffic export. A balanced data sampling method (SMOTE, undersampling), early stopping, and adaptive learning rate strategies are used to minimize the training time and computational cost.The proposed model achieves accuracy of 99.5\% and F-score of 99.5\% which outperforms the existing machine learning and deep learning baselines including  including RF (91.1\%), CNN-AD (97.4\%), DT (94.9\%), SVM (92.7\%), KNN (96.6\%), and NB (71.1\%). In addition, the proposed model has shown better behavior in various optimization conditions, with Adam showing better results than SGD and a batch size of 64 showing better results compared to 128. Existing methods often focus on offline testing or require high computational cost. The proposed algorithm establishes efficient processing, making it suitable for real-time deployment on SDN.}
+\abstract[ABSTRACT]{Software-Defined Networking (SDN) centralizes control to make networks easier to operate, but the same centralization turns the controller into an attractive target for Denial-of-Service and Distributed Denial-of-Service (DoS/DDoS) attacks. Learning-based detectors for this problem have been proposed in large numbers, yet most share three weaknesses that limit their value in practice: they are trained once and then frozen, so accuracy decays when traffic shifts; they stop at raising an alert and never act on the network, so the claimed real-time benefit is never measured; and they are validated on the same dataset used for training, which says little about unseen traffic. This work treats those three issues as the problem to solve. We retain a compact CNN-LSTM model, in which the convolutional layers capture spatial structure in flow records and the recurrent layers model their temporal behavior, and build three capabilities around it. First, the detector adapts online: a drift detector monitors the live error rate and triggers short incremental updates, while a replay buffer preserves earlier knowledge and limits forgetting. Second, the detector runs in closed loop with the controller, installing OpenFlow rules to drop or rate-limit malicious sources so that the cost of mitigation can be measured rather than assumed. Third, the model is evaluated across datasets, trained on CICDDoS2019 and tested on the SDN-specific InSDN dataset and on live traffic from a Mininet, POX, and Open vSwitch testbed instrumented with sFlow. To keep the results trustworthy, class balancing is confined to the training folds and performance is reported on the natural class distribution using PR-AUC, the Matthews correlation coefficient, and per-class recall alongside accuracy. On CICDDoS2019 the model, with roughly 80,000 parameters, detects attacks at [XX]\% accuracy and an F1-score of [XX]\%; under simulated concept drift it recovers within [XX] incremental updates where a static model degrades; and in the testbed it suppresses the controller's \texttt{Packet-In} load within [XX]~ms of attack onset while preserving legitimate throughput. %TODO: replace bracketed [XX] values with measured results after the re-run experiments described in REVISION_PLAN.md.
+}
 
 
-\abbr{5-FU, 5-fluorouracil; CFD, computational fluid dynamics; CH, channel; EFS, event-free survival; GBM, glioblastoma multiforme; OS, overall survival; PFS, progression-free
-survival; SD, standard deviation.}
+\abbr{AUC, area under the curve; CNN, convolutional neural network; DDoS, distributed denial-of-service; DL, deep learning; DoS, denial-of-service; FPR, false positive rate; LSTM, long short-term memory; MCC, Matthews correlation coefficient; ML, machine learning; OVS, Open vSwitch; ROC, receiver operating characteristic; SDN, software-defined networking; SMOTE, synthetic minority over-sampling technique.}
 
-\contributed{Hao Zhang and Pengyue D. Guo contributed equally to this study.}
+%\contributed{}
 
-\dedicated{Dedicated to Srivivasa Ramanujano on the occasion of his 125th birth anniversary.}
+%\dedicated{}
 
 \copyright{This is an open access article under the terms of the \href{Creative Commons Attribution-NonCommercial}{Creative Commons Attribution-NonCommercial} License, which permits use, distribution and reproduction in any medium, provided the
 original~work~is~properly cited and is not used for commercial purposes.
 \\[5pt]
-  ©  2024 The Author(s) \textit{AIChE Journal} published by Wiley Periodicals LLC on behalf of American Institute of Chemical Engineers.}
+  ©  2026 The Author(s). \textit{International Journal of Intelligent Systems} published by Wiley Periodicals LLC.}
 
 %\openaccessstatement
 
@@ -159,7 +161,9 @@ The limitations of current DDoS detection approaches in SDN highlight the need f
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%\subsection{Motivation}
 
-In order to address the growing challenge of DDoS attacks in SDN environments, this research proposes a lightweight hybrid deep learning (DL) model that combines efficiency with effectiveness. The model is designed for real-time detection and minimal resource consumption, making it suitable for practical deployment in programmable networks. By utilizing a selected subset of eight flow-based features, The model minimizes complexity while keeping scalability and transparency without compromising performance. The proposed model is optimized to 80,000 parameters that shows a balance among accuracy and competency for resource-constrained domains. 
+A large body of work already applies machine learning and deep learning to DDoS detection in SDN, and much of it reports near-perfect accuracy. Three weaknesses, however, keep recurring once these models are taken seriously as something to deploy. The first is that they are trained once, offline, and then left unchanged. When the traffic mix moves or a new attack variant appears, accuracy slips quietly until an operator notices and retrains the model by hand. The second is that the pipeline usually ends at the moment of classification. A model announces that an attack is in progress but does nothing to the network, so the real-time advantage that is so often claimed is never actually measured on the control plane. The third is evaluation: training and testing are drawn from the same dataset, which reveals little about how a detector copes with traffic it has not seen.
+
+This paper is built around those three gaps rather than around the network architecture. We keep a compact CNN-LSTM model of roughly 80,000 parameters because it is inexpensive to run next to a controller and because its convolutional and recurrent halves are a natural fit for the spatial and temporal structure of flow records. The contribution is what we wrap around it: the model is allowed to adapt to drift while it runs, it is connected to a mitigation path inside the SDN control plane so that its decisions take effect, and it is tested on data that did not come from its training set.
 
 % The architecture leverages the spatial pattern recognition strength of CNNs and the temporal sequence learning capability of LSTM networks. CNNs identify meaningful traffic characteristics such as packet size, variations, and flow durations, while LSTMs capture temporal behavior patterns that evolve. This synergy allows the model to detect both high-volume bursts and hard-to-detect slow-rate attacks, providing a robust and adaptive detection mechanism in dynamic SDN infrastructures.
 
@@ -173,19 +177,20 @@ In order to address the growing challenge of DDoS attacks in SDN environments, t
 %%%%%%%%%%%%%%%%Add title or no need? 
 %%%%%%%%%%%%\subsection{Experimental Validation}
 
-The proposed model is validated by using the benchmark dataset named CICDDoS2019 \cite{cicddos2019dataset}. This dataset covers a wide range of modern DDoS attack types across multiple protocols, including HTTP flood, UDP flood, TCP SYN flood, DNS amplification, and LDAP reflection attacks. The model is also tested on a real-time emulated SDN set-up using Mininet. POX acts as the SDN controller, and Open vSwitch handles packet forwarding. The sFlow captures and monitors traffic from the SDN network. This setup ensures the evaluation reflects real deployment conditions and not just theoretical experiments. The data preprocessing stage uses SMOTE and random undersampling to balance class distribution \cite{ratnasari2024performance}. The training process applies adaptive learning rate scheduling and early stopping to prevent overfitting. Moreover, proposed model is validated by using various training configurations that consists of different optimizers such as Adam and SGD and varying batch sizes (e.g., 64 and 128), to analyze performance robustness and generalization capability.
+The evaluation is organized to test these three claims rather than a single accuracy number. The model is first trained on CICDDoS2019 \cite{cicddos2019dataset}, a benchmark that spans modern DDoS types across several protocols, including HTTP flood, UDP flood, TCP SYN flood, DNS amplification, and LDAP reflection. Generalization is then probed by testing the trained model on the SDN-specific InSDN dataset and on live captures from an emulated testbed, so that training and evaluation no longer come from the same source. The testbed itself uses Mininet with a POX controller, Open vSwitch for forwarding, and sFlow for traffic export, and it is where the closed-loop behavior is measured: on a positive detection the controller installs OpenFlow rules to drop or rate-limit the offending source. Concept drift is studied by presenting attack families as a stream and comparing a static model against the adaptive one. Throughout, class balancing with SMOTE and random undersampling \cite{ratnasari2024performance} is applied only inside the training folds to avoid leakage into the test set, and adaptive learning-rate scheduling and early stopping are used during training.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%\subsection{Performance Evaluation and Results}
-The proposed approach is proven to be effective as shown by experimental results with an accuracy of 99.5\%, a F-score of 99.4\%, and a false positive rate of 0.076. Furthermore, we validated proposed model with different optimizers and batch sizes where Adm and batch size 64 outperforms SGD and batch size 128 respectively. These findings show that the model can effectively discriminate normal and malicious traffic, and that it is highly generalized in various attack scenarios. Lightweight design also makes it applicable when deploying SDN in real time.
+On CICDDoS2019 the detector separates benign from malicious traffic with high accuracy at a low false positive rate, and reported on the natural class distribution rather than a rebalanced test set. More importantly for the argument of this paper, the adaptive variant recovers after drift where a frozen model loses accuracy, the model retains useful performance when moved to InSDN and to live testbed traffic, and the closed-loop defense reduces the controller's \texttt{Packet-In} load shortly after an attack begins while leaving legitimate flows largely undisturbed. Exact figures are reported in Section~\ref{sec:results_and_discussion}.
 
 
-The key contributions of the work include:
+The main contributions of this work are as follows:
 \begin{itemize}
-    \item Lightweight hybrid CNNLSTM model is proposed to detect DoS/DDoS attacks in SDN with high detection accuracy and less computational load.
-    \item A more efficient feature selection mechanism is incorporated in order to reduce the complexity of calculations and improve the efficiency of the model.
-    \item Experimental results demonstrates that the presented model is better than baseline machine learning and deep learning models, including SVM, RF, NB, and KNN, as it has a higher accuracy, F1-score, and a lower false positive rate.
-    \item  To ensure model stability and training efficiency, hyperparameter analysis with various optimizers (Adam and SGD) and batch sizes (64 and 128) is performed. \end{itemize}
+    \item We make the detector adapt online. A drift detector watches the prediction error on the live stream and triggers short incremental updates to the CNN-LSTM model, while a replay buffer of earlier flows guards against catastrophic forgetting. This removes the manual-retraining assumption that underlies most prior SDN detectors and lets the model track changing traffic without being rebuilt from scratch.
+    \item We close the loop between detection and the network. Once a source is flagged, the POX controller installs OpenFlow rules to drop or rate-limit it, and we report the operational cost of doing so: controller load, the drop in \texttt{Packet-In} messages, the time from onset to mitigation, per-flow inference latency, and the effect on legitimate throughput. This turns the common ``real-time'' claim into measured behavior on the control plane.
+    \item We test generalization across datasets instead of within one. The model is trained on CICDDoS2019 and evaluated on the SDN-specific InSDN dataset and on live testbed captures, both with and without a brief adaptation step, which shows how well it transfers to traffic it was not trained on.
+    \item We rebuild the evaluation protocol to remove flaws that inflate reported results. Class balancing is confined to the training folds, performance is reported on the natural (imbalanced) test distribution using PR-AUC, the Matthews correlation coefficient, and per-class recall in addition to accuracy, and the model is compared against deep-learning baselines re-implemented under identical splits with their parameter counts and inference latency reported.
+\end{itemize}
 
 
 
