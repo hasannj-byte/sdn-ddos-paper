@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Experiment outputs / artifacts
+results/
+*.keras
+*.h5
+*.joblib
+
+# Datasets (never commit these)
+data/
+*.csv

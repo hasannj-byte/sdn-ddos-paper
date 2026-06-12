@@ -1,0 +1,77 @@
+# Central configuration for all experiments.
+# Paths are placeholders -- set them to your local dataset locations.
+
+seed: 42
+
+# The eight flow-level features used by the proposed model (Table 3 in the paper).
+# Names match the CICDDoS2019 CICFlowMeter columns (after whitespace cleaning).
+features:
+  - Flow Duration
+  - Fwd Packet Length Mean
+  - Flow Packets/s
+  - Bwd Packet Length Mean
+  - Fwd Header Length
+  - ACK Flag Count
+  - Init_Win_bytes_forward
+  - min_seg_size_forward
+
+label_column: Label          # original label column in the CSVs
+benign_label: BENIGN         # value mapped to 0; everything else -> 1
+
+data:
+  cicddos2019_dir: /path/to/CICDDoS2019/csvs   # TODO: directory of CIC CSV files
+  insdn_dir: /path/to/InSDN/csvs               # TODO: directory of InSDN CSV files
+  testbed_capture: /path/to/testbed_flows.csv  # produced by sdn/feature_extractor.py
+
+split:
+  test_size: 0.20
+  val_size: 0.10            # fraction of the training partition used for validation
+  stratify: true
+
+preprocess:
+  resample: smote_under     # one of: none | smote | smote_under  (TRAIN folds only)
+  smote_sampling_strategy: 0.5   # minority:majority ratio target after SMOTE
+  under_sampling_strategy: 0.8   # majority downsample ratio after undersampling
+
+model:
+  timesteps: 8             # the 8 features are arranged as a length-8 sequence, 1 channel
+  channels: 1
+  conv_filters: 64
+  conv_kernel: 2
+  lstm_units: 50
+  dense_units: 64
+  dropout: 0.5
+
+train:
+  optimizer: adam          # adam | sgd
+  batch_size: 64           # 64 | 128
+  epochs: 100
+  learning_rate: 0.001
+  early_stopping_patience: 8
+  reduce_lr_patience: 4
+  reduce_lr_factor: 0.5
+
+drift:
+  window: 1000             # sliding window W of recent labeled flows
+  warning_level: 2.0       # DDM warning at p_min + 2*s_min
+  drift_level: 3.0         # DDM drift at p_min + 3*s_min
+  update_steps: 5          # K incremental gradient steps per drift event
+  replay_capacity: 5000    # reservoir buffer size
+  replay_batch: 256        # samples drawn from buffer per update
+  # order in which attack families enter the stream (for the drift protocol)
+  stream_families: [Syn, UDP, MSSQL, LDAP, NetBIOS, UDPLag]
+
+cross_dataset:
+  adapt_fraction: 0.05     # labeled fraction of target traffic used for brief adaptation
+  adapt_steps: 10
+
+sdn:
+  controller_ip: 127.0.0.1
+  controller_port: 6633
+  detect_window: 50        # flows aggregated per source before a decision
+  detect_threshold: 0.8    # mean attack-probability above which a source is mitigated
+  mitigation: rate_limit   # drop | rate_limit
+  meter_rate_kbps: 1000    # rate-limit band when mitigation == rate_limit
+  rule_hard_timeout: 30    # seconds; lets a source recover if it stops misbehaving
+
+output_dir: ./results
