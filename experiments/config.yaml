@@ -57,7 +57,10 @@ drift:
   warning_level: 2.0       # DDM warning at p_min + 2*s_min
   drift_level: 3.0         # DDM drift at p_min + 3*s_min
   update_steps: 5          # K incremental gradient steps per update
-  recovery_exit_error: 0.15  # keep adapting each batch after drift until batch error <= this
+  base_n_families: 2       # pre-train the base model on a MIX of the first N families
+  high_error_trigger: 0.30 # enter recovery when smoothed error rises above this (cold-start fix)
+  recovery_exit_error: 0.12  # leave recovery when smoothed error falls below this (hysteresis)
+  err_ema_decay: 0.7       # smoothing for the recovery error signal
   replay_capacity: 5000    # reservoir buffer size
   replay_batch: 256        # samples drawn from buffer per update
   # order in which attack families enter the stream (for the drift protocol)

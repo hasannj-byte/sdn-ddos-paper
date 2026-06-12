@@ -36,8 +36,15 @@ class OnlineAdapter:
         self.loss_fn = tf.keras.losses.BinaryCrossentropy()
         self.opt = make_optimizer(cfg)
         self.recovering = False
+        self.err_ema = None
         self.n_updates = 0
         self.update_time_ms = []
+
+    def seed_buffer(self, X_flat: np.ndarray, y: np.ndarray) -> None:
+        """Pre-fill the replay buffer with earlier (base-family) data, so the buffer
+        can defend those families against forgetting once drift adaptation starts."""
+        if self.use_replay:
+            self.buffer.add(np.asarray(X_flat, dtype=np.float32), np.asarray(y).ravel())
 
     # -- one streaming step over a mini-batch of flows --
     def step(self, X_flat: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -54,17 +61,22 @@ class OnlineAdapter:
                 drift = True
 
         batch_err = float(np.mean(pred != y))
+        d = self.cfg["drift"]
+        decay = d.get("err_ema_decay", 0.7)
+        self.err_ema = batch_err if self.err_ema is None else \
+            decay * self.err_ema + (1 - decay) * batch_err
+
         if self.adaptive:
-            # A change in error rate (DDM) opens a recovery phase; we keep adapting
-            # on each subsequent batch until the batch error falls back below the
-            # exit threshold. This fixes the failure mode where a *sustained* high
-            # error (a wholly new attack family) looks "stable" to DDM and never
-            # re-triggers, leaving a single, useless update.
-            if drift:
+            # Recovery is driven by the error level itself, with hysteresis, NOT only
+            # by a DDM transition. This fixes the cold-start failure: a family that is
+            # hard from the very first batch (no preceding low-error baseline, so DDM
+            # stays silent) still trips the high-error trigger and gets adapted to.
+            # DDM is retained only as an auxiliary drift-event signal.
+            if drift or self.err_ema >= d.get("high_error_trigger", 0.30):
                 self.recovering = True
             if self.recovering:
                 self._incremental_update(X_flat, y)
-                if batch_err <= self.cfg["drift"]["recovery_exit_error"]:
+                if self.err_ema <= d["recovery_exit_error"]:
                     self.recovering = False
 
         if self.use_replay:
