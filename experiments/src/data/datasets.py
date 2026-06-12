@@ -87,17 +87,18 @@ def load_cicddos2019(cfg: dict, with_family: bool = False):
 
 
 # --- Cross-dataset feature mapping -----------------------------------------
-# TODO: verify these against the actual InSDN / testbed column headers and adjust.
-# Keys are the canonical feature names; values are the source-dataset column names.
+# Keys are the canonical feature names (CICDDoS2019 verbose naming); values are the
+# source-dataset column names. InSDN uses the newer ABBREVIATED CICFlowMeter naming,
+# verified against the downloaded InSDN header.
 INSDN_FEATURE_MAP = {
     "Flow Duration": "Flow Duration",
-    "Fwd Packet Length Mean": "Fwd Packet Length Mean",
-    "Flow Packets/s": "Flow Packets/s",
-    "Bwd Packet Length Mean": "Bwd Packet Length Mean",
-    "Fwd Header Length": "Fwd Header Length",
-    "ACK Flag Count": "ACK Flag Count",
-    "Init_Win_bytes_forward": "Init_Win_bytes_forward",
-    "min_seg_size_forward": "min_seg_size_forward",
+    "Fwd Packet Length Mean": "Fwd Pkt Len Mean",
+    "Flow Packets/s": "Flow Pkts/s",
+    "Bwd Packet Length Mean": "Bwd Pkt Len Mean",
+    "Fwd Header Length": "Fwd Header Len",
+    "ACK Flag Count": "ACK Flag Cnt",
+    "Init_Win_bytes_forward": "Init Fwd Win Byts",
+    "min_seg_size_forward": "Fwd Seg Size Min",
 }
 
 # The testbed extractor (sdn/feature_extractor.py) already emits canonical names.
@@ -120,7 +121,10 @@ def load_mapped(path: str, cfg: dict, feature_map: dict, label_col: str | None =
 
 
 def load_insdn(cfg: dict):
-    return load_mapped(cfg["data"]["insdn_dir"], cfg, INSDN_FEATURE_MAP)
+    # InSDN's binary label is the numeric `target` column (0 = Normal, 1 = attack).
+    return load_mapped(cfg["data"]["insdn_dir"], cfg, INSDN_FEATURE_MAP,
+                       label_col=cfg["data"].get("insdn_label_column", "target"),
+                       benign_label=cfg["data"].get("insdn_benign_label", "0"))
 
 
 def load_testbed(cfg: dict):

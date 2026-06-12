@@ -21,7 +21,9 @@ benign_label: BENIGN         # value mapped to 0; everything else -> 1
 data:
   cicddos2019_dir: data/cicddos2019/01-12      # subset of official CSVs (HF mirror)
   max_rows: 600000                             # benign-preserving cap for tractable CPU runs; null = use all
-  insdn_dir: /path/to/InSDN/csvs               # TODO: directory of InSDN CSV files
+  insdn_dir: data/insdn                        # InSDN (HF mirror Sharukesh/INSDN)
+  insdn_label_column: target                   # InSDN binary label (0=Normal, 1=attack)
+  insdn_benign_label: "0"
   testbed_capture: /path/to/testbed_flows.csv  # produced by sdn/feature_extractor.py
 
 split:
