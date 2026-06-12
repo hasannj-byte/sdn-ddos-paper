@@ -59,8 +59,10 @@ def compile_model(model: tf.keras.Model, cfg: dict) -> tf.keras.Model:
 
 
 # Layers that the online-adaptation step is allowed to update. The conv feature
-# extractor (conv1d, batchnorm) stays frozen so each update is cheap.
-UPPER_LAYER_NAMES = ("lstm_2", "dense", "output")
+# extractor (conv1d, batchnorm) stays frozen so each update is cheap, but both LSTM
+# layers and the dense head are tunable so the model has enough capacity to learn a
+# genuinely new attack family during recovery.
+UPPER_LAYER_NAMES = ("lstm_1", "lstm_2", "dense", "output")
 
 
 def set_trainable_for_adaptation(model: tf.keras.Model) -> None:

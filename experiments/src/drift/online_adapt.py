@@ -35,6 +35,7 @@ class OnlineAdapter:
         self.window_y = deque(maxlen=d["window"])
         self.loss_fn = tf.keras.losses.BinaryCrossentropy()
         self.opt = make_optimizer(cfg)
+        self.recovering = False
         self.n_updates = 0
         self.update_time_ms = []
 
@@ -43,24 +44,42 @@ class OnlineAdapter:
         Xseq = preprocess.to_sequences(X_flat, self.cfg)
         prob = self.model(Xseq, training=False).numpy().ravel()
         pred = (prob >= 0.5).astype(int)
+        y = np.asarray(y).ravel()
 
+        drift = False
         for xi, yi, pi in zip(X_flat, y, pred):
             self.window_X.append(xi)
             self.window_y.append(int(yi))
-            state = self.ddm.update(int(pi != yi))
-            if self.adaptive and state is State.DRIFT:
-                self._incremental_update()
+            if self.ddm.update(int(pi != yi)) is State.DRIFT:
+                drift = True
+
+        batch_err = float(np.mean(pred != y))
+        if self.adaptive:
+            # A change in error rate (DDM) opens a recovery phase; we keep adapting
+            # on each subsequent batch until the batch error falls back below the
+            # exit threshold. This fixes the failure mode where a *sustained* high
+            # error (a wholly new attack family) looks "stable" to DDM and never
+            # re-triggers, leaving a single, useless update.
+            if drift:
+                self.recovering = True
+            if self.recovering:
+                self._incremental_update(X_flat, y)
+                if batch_err <= self.cfg["drift"]["recovery_exit_error"]:
+                    self.recovering = False
 
         if self.use_replay:
             self.buffer.add(X_flat, y)
         return prob
 
-    def _incremental_update(self) -> None:
+    def _incremental_update(self, X_cur=None, y_cur=None) -> None:
         import time
 
         set_trainable_for_adaptation(self.model)
         Xw = np.asarray(self.window_X, dtype=np.float32)
         yw = np.asarray(self.window_y, dtype=np.int64)
+        if X_cur is not None:  # always include the freshest batch
+            Xw = np.concatenate([Xw, np.asarray(X_cur, dtype=np.float32)], axis=0)
+            yw = np.concatenate([yw, np.asarray(y_cur, dtype=np.int64)], axis=0)
         if self.use_replay and len(self.buffer) > 0:
             Xr, yr = self.buffer.sample(self.cfg["drift"]["replay_batch"])
             Xw = np.concatenate([Xw, Xr], axis=0)

@@ -56,7 +56,8 @@ drift:
   window: 1000             # sliding window W of recent labeled flows
   warning_level: 2.0       # DDM warning at p_min + 2*s_min
   drift_level: 3.0         # DDM drift at p_min + 3*s_min
-  update_steps: 5          # K incremental gradient steps per drift event
+  update_steps: 5          # K incremental gradient steps per update
+  recovery_exit_error: 0.15  # keep adapting each batch after drift until batch error <= this
   replay_capacity: 5000    # reservoir buffer size
   replay_batch: 256        # samples drawn from buffer per update
   # order in which attack families enter the stream (for the drift protocol)

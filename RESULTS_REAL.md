@@ -51,7 +51,47 @@ Confirmed: the proposed architecture has **46,977 trainable parameters** (not th
 Pending: requires the InSDN dataset (not yet downloaded).
 
 ## Phase 2 — Concept drift (Table tab:drift_results)
-Running. Results appended here when complete.
+
+Protocol: pre-train on the first family (Syn), then stream the remaining families
+(DrDoS_UDP, DrDoS_MSSQL, DrDoS_LDAP, DrDoS_NetBIOS, UDP-lag) prequentially.
+
+| Setting | Preq. Acc | Preq. F1 | Updates | Update ms |
+|---|---|---|---|---|
+| Static (no update) | 0.2554 | 0.2989 | 0 | — |
+| Adaptive, no replay | 0.4998 | 0.6223 | 8 | 387 |
+| **Adaptive + replay (proposed)** | 0.5006 | 0.6227 | 8 | 438 |
+
+Per-family final accuracy (stream order):
+
+| Family | Static | Adaptive | Adaptive+replay |
+|---|---|---|---|
+| DrDoS_UDP | 0.089 | 0.089 | 0.089 |
+| DrDoS_MSSQL | 0.127 | 0.127 | 0.127 |
+| DrDoS_LDAP | 0.882 | 0.882 | 0.882 |
+| **DrDoS_NetBIOS** | **0.071** | **0.954** | **0.957** |
+| UDP-lag | 0.931 | 0.930 | 0.933 |
+
+### Honest reading of Phase 2
+- **The adaptation works, partially.** Overall prequential accuracy nearly doubles
+  (0.255 -> 0.50) and the clearest case is NetBIOS, which the static model fails
+  (0.07) and the adaptive model recovers (0.95). That is a real demonstration of the
+  mechanism.
+- **It is not a clean sweep.** DrDoS_UDP and DrDoS_MSSQL never recover. Root cause: the
+  DDM detector needs a low->high error transition to fire; UDP/MSSQL arrive first and
+  are hard from the start, so no "spike" registers and recovery never triggers (a
+  cold-start weakness). NetBIOS fires because it follows the easy LDAP segment.
+- **Replay vs no-replay is indistinguishable here** (0.954 vs 0.957). The protocol
+  never re-tests earlier families at the end, so catastrophic forgetting is not
+  actually exercised and the replay buffer's value cannot be shown. The forgetting
+  metric reads 0 for all settings for the same reason -- it is measured within each
+  family's own segment, not by re-evaluation at the end.
+
+### Open items before this table is paper-ready
+1. Fix the DDM cold-start (e.g., trigger recovery whenever recent error is high, not
+   only on a transition) so UDP/MSSQL also recover.
+2. Re-test all earlier families at the END of the stream to actually measure
+   forgetting and give the replay buffer something to prove.
+3. Consider pre-training on a mix of families (more realistic than train-on-one).
 
 ## Phase 3 — Closed-loop mitigation (Table tab:mitigation_results)
 Pending: requires the Mininet/POX/OVS testbed (Ubuntu guest), not this machine.
