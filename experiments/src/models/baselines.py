@@ -85,6 +85,7 @@ def build_tree_baselines(cfg: dict) -> dict:
             n_estimators=300, max_depth=6, learning_rate=0.1,
             subsample=0.9, eval_metric="logloss", random_state=cfg["seed"], n_jobs=-1,
         )
-    except ImportError:
-        pass
+    except Exception as e:  # ImportError or dlopen/libomp failure
+        print(f"[warn] xgboost unavailable, skipping ({e.__class__.__name__}). "
+              f"On macOS: brew install libomp")
     return estimators
