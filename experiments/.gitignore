@@ -10,6 +10,7 @@ results/
 *.h5
 *.joblib
 
-# Datasets (never commit these)
-data/
+# Datasets (never commit these) -- anchored so it does NOT match src/data/
+/data/
+/results/
 *.csv
