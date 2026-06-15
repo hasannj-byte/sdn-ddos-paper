@@ -20,15 +20,22 @@ def _clean_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_csv_dir(path: str) -> pd.DataFrame:
-    """Concatenate every CSV in a directory (or load a single CSV file)."""
+def load_csv_dir(path: str, keep_cols: set[str] | None = None) -> pd.DataFrame:
+    """Concatenate every CSV in a directory (or load a single CSV file).
+
+    If `keep_cols` is given (a set of post-strip column names), only those columns
+    are read from disk. This is essential for full-size runs: CICDDoS2019 has 88
+    columns but we need ~10, so reading just those cuts memory ~9x.
+    """
     if os.path.isfile(path):
         files = [path]
     else:
         files = sorted(glob.glob(os.path.join(path, "*.csv")))
     if not files:
         raise FileNotFoundError(f"No CSV files found at {path}")
-    frames = [_clean_columns(pd.read_csv(f, low_memory=False)) for f in files]
+    usecols = (lambda c: c.strip() in keep_cols) if keep_cols else None
+    frames = [_clean_columns(pd.read_csv(f, low_memory=False, usecols=usecols))
+              for f in files]
     return pd.concat(frames, ignore_index=True)
 
 
@@ -74,7 +81,8 @@ def load_cicddos2019(cfg: dict, with_family: bool = False):
     slice the stream by attack type. Set `data.max_rows` in config to subsample
     (benign-preserving) for a tractable run; omit/null to use everything.
     """
-    df = load_csv_dir(cfg["data"]["cicddos2019_dir"])
+    keep = {f.strip() for f in cfg["features"]} | {cfg["label_column"].strip()}
+    df = load_csv_dir(cfg["data"]["cicddos2019_dir"], keep_cols=keep)
     df = basic_clean(df, cfg["features"])
     y = make_labels(df, cfg["label_column"], cfg["benign_label"])
     df = _subsample_keep_benign(df, y, cfg["data"].get("max_rows"), cfg["seed"])
@@ -108,7 +116,9 @@ TESTBED_FEATURE_MAP = {f: f for f in INSDN_FEATURE_MAP}
 def load_mapped(path: str, cfg: dict, feature_map: dict, label_col: str | None = None,
                 benign_label: str | None = None):
     """Load a foreign dataset and rename its columns to the canonical eight."""
-    df = load_csv_dir(path)
+    lc = label_col or cfg["label_column"]
+    keep = {src.strip() for src in feature_map.values()} | {lc.strip()}
+    df = load_csv_dir(path, keep_cols=keep)
     rename = {src: canon for canon, src in feature_map.items() if src in df.columns}
     df = df.rename(columns=rename)
     df = basic_clean(df, cfg["features"])
