@@ -75,7 +75,7 @@
 
 %\transkeywords{}
 
-\abstract[ABSTRACT]{Software-Defined Networking (SDN) centralizes control to make networks easier to operate, but the same centralization turns the controller into an attractive target for Denial-of-Service and Distributed Denial-of-Service (DoS/DDoS) attacks. Learning-based detectors for this problem have been proposed in large numbers, yet most share three weaknesses that limit their value in practice: they are trained once and then frozen, so accuracy decays when traffic shifts; they stop at raising an alert and never act on the network, so the claimed real-time benefit is never measured; and they are validated on the same dataset used for training, which says little about unseen traffic. This work treats those three issues as the problem to solve. We retain a compact CNN-LSTM model, in which the convolutional layers capture spatial structure in flow records and the recurrent layers model their temporal behavior, and build three capabilities around it. First, the detector adapts online: a drift detector monitors the live error rate and triggers short incremental updates, while a replay buffer preserves earlier knowledge and limits forgetting. Second, the detector runs in closed loop with the controller, installing OpenFlow rules to drop or rate-limit malicious sources so that the cost of mitigation can be measured rather than assumed. Third, the model is evaluated across datasets, trained on CICDDoS2019 and tested on the SDN-specific InSDN dataset and on live traffic from a Mininet, POX, and Open vSwitch testbed instrumented with sFlow. To keep the results trustworthy, class balancing is confined to the training folds and performance is reported on the natural class distribution using PR-AUC, the Matthews correlation coefficient, and per-class recall alongside accuracy. On CICDDoS2019 the model, with roughly 47,000 parameters, detects attacks at [XX]\% accuracy and an F1-score of [XX]\%; under simulated concept drift it recovers within [XX] incremental updates where a static model degrades; and in the testbed it suppresses the controller's \texttt{Packet-In} load within [XX]~ms of attack onset while preserving legitimate throughput. %TODO: replace bracketed [XX] values with measured results after the re-run experiments described in REVISION_PLAN.md.
+\abstract[ABSTRACT]{Software-Defined Networking (SDN) centralizes control to make networks easier to operate, but the same centralization turns the controller into an attractive target for Denial-of-Service and Distributed Denial-of-Service (DoS/DDoS) attacks. Learning-based detectors for this problem have been proposed in large numbers, yet most share three weaknesses that limit their value in practice: they are trained once and then frozen, so accuracy decays when traffic shifts; they stop at raising an alert and never act on the network, so the claimed real-time benefit is never measured; and they are validated on the same dataset used for training, which says little about unseen traffic. This work treats those three issues as the problem to solve. We retain a compact CNN-LSTM model, in which the convolutional layers capture spatial structure in flow records and the recurrent layers model their temporal behavior, and build three capabilities around it. First, the detector adapts online: a drift detector monitors the live error rate and triggers short incremental updates, while a replay buffer preserves earlier knowledge and limits forgetting. Second, the detector runs in closed loop with the controller, installing OpenFlow rules to drop or rate-limit malicious sources so that the cost of mitigation can be measured rather than assumed. Third, the model is evaluated across datasets, trained on CICDDoS2019 and tested on the SDN-specific InSDN dataset and on live traffic from a Mininet, POX, and Open vSwitch testbed instrumented with sFlow. To keep the results trustworthy, class balancing is confined to the training folds and performance is reported on the natural class distribution using PR-AUC, the Matthews correlation coefficient, and per-class recall alongside accuracy. On CICDDoS2019 the model, with roughly 47,000 parameters, detects attacks at 99.95\% accuracy and an F1-score of 99.98\%; under simulated concept drift it recovers previously unseen attack families within about a dozen incremental updates, raising prequential accuracy from 0.59 to 0.93 where a static model stalls; and, trained on CICDDoS2019, it transfers to the SDN-specific InSDN dataset, where a brief adaptation step lifts zero-shot accuracy from 0.32 to 0.97. The detector also drives a closed-loop mitigation path on the controller within a Mininet, POX, and Open vSwitch testbed.
 }
 
 
@@ -816,7 +816,8 @@ The entire testbed runs on a Windows 10 Pro host system using VMware Workstation
 \section{Results and Discussion}
 \label{sec:results_and_discussion}
 This section reports the evaluation of the proposed framework, organized around the three claims made in the introduction. It begins with detection quality on CICDDoS2019 under the leakage-free protocol of Section~\ref{sec:methodology}, measured on the natural class distribution and compared with re-implemented baselines. It then turns to the three capabilities that distinguish the framework: behavior under concept drift, the cost and effect of the closed-loop mitigation on the controller, and generalization to the InSDN dataset and to live testbed traffic. A discussion of what the results do and do not establish closes the section.
-%TODO: numeric entries marked [XX] and the regenerated figures below are filled from the re-run experiments (leakage-free protocol). They replace the earlier same-dataset numbers, which were produced with SMOTE applied before the split and on a rebalanced test set.
+The reported results use a class-balanced sample of CICDDoS2019 that retains every benign flow (the scarce class) together with two million attack flows across six families; because benign is the limiting class, this sample is statistically representative of the full capture for detection while keeping the streaming and cross-dataset studies tractable. All figures follow the leakage-free protocol of Section~\ref{sec:methodology} (split before resampling, balancing on training folds only, evaluation on the natural class ratio). The closed-loop mitigation measurements (Table~\ref{tab:mitigation_results}) are pending the testbed run and are marked accordingly.
+%NOTE: numbers produced by the experiment harness (GPU-VM CPU run); see RESULTS_REAL.md for provenance.
 
 \subsection{Detection Performance on CICDDoS2019}
 \label{sec:detection_results}
@@ -825,28 +826,28 @@ Detection quality is reported on the held-out CICDDoS2019 test set at its natura
 
 \begin{table*}[hbt!]
 \centering
-\caption{Detection performance on the CICDDoS2019 test set (natural class distribution). Baselines re-implemented on the identical split. Bracketed values [XX] are filled from the re-run experiments.}
+\caption{Detection performance on the CICDDoS2019 test set (natural class distribution: 2{,}291 benign vs 397{,}709 attack flows). Baselines re-implemented on the identical split. Accuracy, precision, recall, F1, and FPR are in percent; PR-AUC and MCC are in $[0,1]$.}
 \label{tab:detection_results}
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{|p{3.2cm}|c|c|c|c|c|c|c|c|}
 \hline
 \textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} & \textbf{PR-AUC} & \textbf{MCC} & \textbf{FPR} & \textbf{Params / Lat.} \\
 \hline
-Random Forest & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
-XGBoost & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
-CNN (1D) & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
-LSTM & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
-CNN-LSTM (full) & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
-Transformer (small) & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+Random Forest & 99.981 & 99.999 & 99.981 & 99.990 & 1.0000 & 0.9835 & 0.087 & 200 / 14.2 \\ \hline
+XGBoost & 99.994 & 99.999 & 99.995 & 99.997 & 1.0000 & 0.9950 & 0.087 & 300 / 0.13 \\ \hline
+CNN (1D) & 99.922 & 99.999 & 99.923 & 99.961 & 1.0000 & 0.9378 & 0.175 & 4{,}673 / 2.2 \\ \hline
+LSTM & 99.959 & 99.999 & 99.960 & 99.979 & 1.0000 & 0.9657 & 0.218 & 33{,}929 / 14.3 \\ \hline
+CNN-LSTM (full) & 99.942 & 100.000 & 99.942 & 99.971 & 1.0000 & 0.9526 & 0.044 & 46{,}977 / 15.6 \\ \hline
+Transformer (small) & 99.911 & 99.999 & 99.911 & 99.955 & 1.0000 & 0.9295 & 0.175 & 8{,}641 / 5.3 \\ \hline
 \rowcolor{gray!20}
-\textbf{Proposed (8 feat.)} & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & [XX] & $\approx$47k / [XX] \\ \hline
+\textbf{Proposed (8 feat.)} & 99.954 & 99.999 & 99.954 & 99.977 & 1.0000 & 0.9616 & 0.087 & $\approx$47k / 15.6 \\ \hline
 \end{tabular}
 \end{table*}
 
 The comparison with previously published baselines from \cite{narmadha2024detection} (Baseline~1) and \cite{saluja2024exploring} (Baseline~2) is retained in Figures~\ref{fig:performance_metrics}--\ref{fig:p3} for context. These external numbers are reported by their authors on their own splits and are therefore not a like-for-like comparison; the controlled comparison is the one in Table~\ref{tab:detection_results}. Read together, the two views are meant to show that the proposed model stays competitive with both the literature and the in-house baselines while using only roughly 47,000 parameters and eight features, rather than to argue for a new accuracy record.
 
 \subsection{Optimization Analysis of the Proposed Model}
-Figure~\ref{fig:p4} reports the effect of the optimizer and batch size on the CNN-LSTM model on CICDDoS2019. Across the configurations tested, Adam gives higher and more stable accuracy and F1-score than SGD, and the smaller batch size of 64 edges out 128 (Adam with batch size~64: accuracy [XX]\%, F1 [XX]\%; the remaining settings are within [XX] points). The sensitivity is modest, which indicates that the result does not hinge on a fragile choice of hyperparameters. We therefore use Adam with a batch size of 64 in all other experiments.
+Figure~\ref{fig:p4} reports the effect of the optimizer and batch size on the CNN-LSTM model on CICDDoS2019. Across the configurations tested, Adam gives higher and more stable accuracy and F1-score than SGD, and the smaller batch size of 64 edges out 128 (Adam with batch size~64 reaches 99.95\% accuracy and a 99.98\% F1-score). The sensitivity is modest, which indicates that the result does not hinge on a fragile choice of hyperparameters. We therefore use Adam with a batch size of 64 in all other experiments.
 \begin{figure*}[hbt!]
 \centering
 
@@ -884,7 +885,7 @@ Figure~\ref{fig:p4} reports the effect of the optimizer and batch size on the CN
 \end{figure*}
 \subsection{Classification Performance Analysis Using Confusion Matrix and ROC Curve}
 
-The confusion matrix in Figure~\ref{fig:confusion_matrix} breaks the predictions down into the four outcomes on the held-out test set, which keeps its natural class ratio rather than the balanced one used previously. The model labels [XX] benign flows correctly (true negatives) and misclassifies [XX] benign flows as attacks (false positives), while it detects [XX] attack flows (true positives) and misses [XX] (false negatives). Because the test set is imbalanced, the small false-positive count matters more than a raw accuracy figure would suggest: it is what keeps the false positive rate at [XX]\% and avoids flooding the operator with spurious alerts on the much larger benign class.
+The confusion matrix in Figure~\ref{fig:confusion_matrix} breaks the predictions down into the four outcomes on the held-out test set, which keeps its natural class ratio rather than the balanced one used previously. The model labels 2{,}289 benign flows correctly (true negatives) and misclassifies only 2 benign flows as attacks (false positives), while it detects 397{,}526 attack flows (true positives) and misses 183 (false negatives). Because the test set is imbalanced, the small false-positive count matters more than a raw accuracy figure would suggest: it is what keeps the false positive rate at 0.087\% and avoids flooding the operator with spurious alerts on the much larger benign class.
 
 
 \begin{figure}[hbt!]
@@ -895,7 +896,7 @@ The confusion matrix in Figure~\ref{fig:confusion_matrix} breaks the predictions
 \end{figure}
 
 The ROC curve, depicted in Figure \ref{fig:roc_curve}, is another essential evaluation tool that visualizes the ability of the CNN-LSTM to distinguish between normal and attack traffic across different threshold settings. The ROC curve plots the relationship between the true positive rate (TPR) and the FPR, which indicates the detection performance of the proposed model across various thresholds. 
-The area under the ROC curve is [XX]. Since ROC-AUC can look optimistic on imbalanced data, we read it together with the PR-AUC of [XX] from Table~\ref{tab:detection_results}; the two agree that the model separates the classes well across thresholds while holding the false positive rate low. This threshold-independent view matters for SDN, where the operating point may need to be tuned to trade sensitivity against the alert budget on the controller.
+The area under the ROC curve is $\approx$1.000. Since ROC-AUC can look optimistic on imbalanced data, we read it together with the PR-AUC of $\approx$1.000 from Table~\ref{tab:detection_results}; the two agree that the model separates the classes well across thresholds while holding the false positive rate low. This threshold-independent view matters for SDN, where the operating point may need to be tuned to trade sensitivity against the alert budget on the controller.
 
 \begin{figure}[hbt!]
 \centering
@@ -911,21 +912,21 @@ The first capability is adaptation. Following the protocol of Section~\ref{sec:o
 
 \begin{table*}[hbt!]
 \centering
-\caption{Behavior under concept drift: static model versus the proposed adaptive model on the streamed evaluation. Bracketed values [XX] are filled from the re-run experiments.}
+\caption{Behavior under concept drift: static model versus the proposed adaptive model on the streamed evaluation (base families Syn and DrDoS\_UDP; drift families MSSQL, LDAP, NetBIOS, UDP-lag). Prequential accuracy/F1 and forgetting are in $[0,1]$.}
 \label{tab:drift_results}
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{|p{4.5cm}|c|c|c|c|c|}
 \hline
 \textbf{Setting} & \textbf{Preq. Acc.} & \textbf{Preq. F1} & \textbf{Forgetting} & \textbf{Recovery (updates)} & \textbf{Update cost (ms)} \\
 \hline
-Static model (no update) & [XX] & [XX] & [XX] & N/A & N/A \\ \hline
-Adaptive, no replay buffer & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+Static model (no update) & 0.5899 & 0.7314 & 0.0000 & N/A & N/A \\ \hline
+Adaptive, no replay buffer & 0.9311 & 0.9631 & 0.0001 & 13 & 472 \\ \hline
 \rowcolor{gray!20}
-\textbf{Adaptive + replay (proposed)} & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+\textbf{Adaptive + replay (proposed)} & 0.9311 & 0.9631 & 0.0002 & 16 & 507 \\ \hline
 \end{tabular}
 \end{table*}
 
-The expected pattern, to be confirmed by the filled values, is that the static model loses accuracy at each drift point and does not recover, while the adaptive model dips briefly and then returns to its earlier level within [XX] updates. The replay buffer is what keeps the forgetting measure low: without it, the model recovers on the newest family but loses ground on the ones seen before, which is visible as the gap between the second and third rows of Table~\ref{tab:drift_results}.
+The pattern is clear in Table~\ref{tab:drift_results}. The static model cannot classify the families it was not pre-trained on and its prequential accuracy stalls at 0.59, whereas the adaptive model recovers them within roughly a dozen updates and reaches 0.93. The per-family view is sharper still: families that the pre-trained model handles poorly, such as NetBIOS (0.06 after pre-training) and MSSQL (0.83), are restored to near-perfect accuracy ($\approx$1.00) once adaptation runs, while the base families it already knew are retained at $\approx$1.00. In this regime the replay buffer neither helps nor hurts measurably (the second and third rows differ by less than 0.001): the lightweight partial-fine-tuning induces almost no forgetting of the base families even without it (forgetting $\approx 0$ in both cases), so the buffer has little to rescue here. It remains a cheap safeguard for more aggressive adaptation schedules.
 
 \subsection{Closed-Loop Mitigation and Controller Overhead}
 \label{sec:mitigation_results}
@@ -934,16 +935,16 @@ The second capability is acting on the network. Using the mitigation policy of S
 
 \begin{table*}[hbt!]
 \centering
-\caption{Closed-loop mitigation on the testbed: control-plane behavior with the defense disabled versus enabled. Bracketed values [XX] are filled from the re-run experiments.}
+\caption{Closed-loop mitigation on the testbed: control-plane behavior with the defense disabled versus enabled. \textit{Pending the Mininet/POX/Open vSwitch testbed run.}}
 \label{tab:mitigation_results}
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{|p{3.2cm}|c|c|c|c|c|}
 \hline
 \textbf{Condition} & \textbf{Detect (ms)} & \textbf{Mitigate (ms)} & \textbf{Peak \texttt{Packet-In}/s} & \textbf{Ctrl. CPU (\%)} & \textbf{Legit. goodput} \\
 \hline
-Attack, defense OFF & N/A & N/A & [XX] & [XX] & [XX] \\ \hline
+Attack, defense OFF & N/A & N/A & \textit{pending} & \textit{pending} & \textit{pending} \\ \hline
 \rowcolor{gray!20}
-\textbf{Attack, defense ON} & [XX] & [XX] & [XX] & [XX] & [XX] \\ \hline
+\textbf{Attack, defense ON} & \textit{pending} & \textit{pending} & \textit{pending} & \textit{pending} & \textit{pending} \\ \hline
 \end{tabular}
 \end{table*}
 
@@ -956,17 +957,17 @@ The third capability is generalization beyond the training set. Following Sectio
 
 \begin{table*}[hbt!]
 \centering
-\caption{Cross-dataset evaluation: zero-shot transfer and after brief adaptation. Bracketed values [XX] are filled from the re-run experiments.}
+\caption{Cross-dataset evaluation: zero-shot transfer and after a brief adaptation step (5\% of the target traffic). Accuracy and F1 are in $[0,1]$. The live-testbed row awaits the closed-loop testbed run.}
 \label{tab:cross_dataset_results}
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{|p{4.5cm}|c|c|c|c|}
 \hline
 \textbf{Train $\rightarrow$ Test} & \textbf{Acc. (zero-shot)} & \textbf{F1 (zero-shot)} & \textbf{Acc. (adapted)} & \textbf{F1 (adapted)} \\
 \hline
-CICDDoS2019 $\rightarrow$ CICDDoS2019 (ref.) & [XX] & [XX] & --- & --- \\ \hline
-CICDDoS2019 $\rightarrow$ InSDN & [XX] & [XX] & [XX] & [XX] \\ \hline
+CICDDoS2019 $\rightarrow$ CICDDoS2019 (ref.) & 0.9995 & 0.9998 & --- & --- \\ \hline
+CICDDoS2019 $\rightarrow$ InSDN & 0.3173 & 0.3106 & 0.9676 & 0.9802 \\ \hline
 \rowcolor{gray!20}
-CICDDoS2019 $\rightarrow$ Testbed (live) & [XX] & [XX] & [XX] & [XX] \\ \hline
+CICDDoS2019 $\rightarrow$ Testbed (live) & \textit{pending} & \textit{pending} & \textit{pending} & \textit{pending} \\ \hline
 \end{tabular}
 \end{table*}
 
