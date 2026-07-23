@@ -774,7 +774,7 @@ In order to evaluate the proposed hybrid CNN-LSTM model in a practical environme
 
 Model training is performed offline using the CICDDoS2019 dataset. After training, the CNN-LSTM model is deployed within the controller environment to classify live traffic flows as benign or malicious. The feature vectors are extracted in real time from sFlow traffic \cite{sflowProtocol}, preprocessed, and passed to the model for inference. The mininet simulates legitimate and malicious traffic, including the SYN flood attacks generated via custom scripts. This setup enables flexible and repeatable experiments under varying traffic conditions.
 
-The entire testbed runs on a Windows 10 Pro host system using VMware Workstation 17 Pro, with Ubuntu 20.04.6 LTS as the guest OS. The controller logic and the CNN-LSTM model operate within the Ubuntu environment for consistency. Python 3.8.10 is used for development. The key libraries include TensorFlow, Scikit-learn, NumPy, Pandas, and imbalanced-learn. Table \ref{table:sdn_setup} provides a summary of the hardware and software specifications used in the testbed.
+The entire testbed runs on a dedicated Ubuntu 24.04 LTS virtual machine (KVM/QEMU via Proxmox VE) rather than a nested Windows/VMware guest, so Mininet's process-based emulation runs natively on the host kernel. The controller logic and the CNN-LSTM model operate within this same environment for consistency. Python 3.12 is used for development. The key libraries include TensorFlow, Scikit-learn, NumPy, Pandas, XGBoost, and imbalanced-learn. Table \ref{table:sdn_setup} provides a summary of the hardware and software specifications used in the testbed.
 
 \begin{table*}[hbt!]
 \centering
@@ -783,30 +783,28 @@ The entire testbed runs on a Windows 10 Pro host system using VMware Workstation
 \hline
 \textbf{No.} & \textbf{Category} & \textbf{Details} \\ \hline
 \multicolumn{3}{|c|}{\textbf{Hardware Setup}} \\ \hline
-1 & Processor & Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz \\ \hline
-2 & Installed RAM & 32.0 GB \\ \hline
-3 & System Type & 64-bit OS, x64-based processor \\ \hline
-4 & Storage & 1 TB SSD \\ \hline
-5 & GPU & 4 GB VRAM GPU \\ \hline
-\multicolumn{3}{|c|}{\textbf{Operating System Setup}} \\ \hline
-6 & Host OS & Windows 10 Pro, Version 22H2 \\ \hline
-7 & Guest OS & Ubuntu 20.04.6 LTS \\ \hline
-\multicolumn{3}{|c|}{\textbf{Virtualization Setup}} \\ \hline
-8 & Software & VMware Workstation 17 Pro, Build-23775571 \\ \hline
+1 & Processor & Intel(R) Core(TM) Ultra 9 285, 16 vCPU \\ \hline
+2 & Installed RAM & 48 GB \\ \hline
+3 & System Type & 64-bit OS, x86\_64 \\ \hline
+4 & Storage & 300 GB SSD (virtual disk) \\ \hline
+5 & GPU & NVIDIA RTX 5080, 16 GB VRAM (visible to the OS; not used for training -- see Section~\ref{sec:threats}) \\ \hline
+\multicolumn{3}{|c|}{\textbf{Operating System / Virtualization Setup}} \\ \hline
+6 & Host Hypervisor & Proxmox VE (KVM/QEMU) \\ \hline
+7 & Guest OS & Ubuntu 24.04.4 LTS \\ \hline
 \multicolumn{3}{|c|}{\textbf{SDN Tools and Controllers}} \\ \hline
-9 & Mininet Version & 2.3.1b4 \\ \hline
-10 & Open vSwitch Version & 2.13.8 (DB Schema 8.2.0) \\ \hline
-11 & OpenFlow Version & Verified via Open vSwitch \\ \hline
-12 & POX Controller Version & POX 0.7.0 (gar) / CPython (3.10.12) \\ \hline
-13 & Monitoring Integration & sFlow for NetFlow statistics \\ \hline
+8 & Mininet Version & 2.3.0-1.1 \\ \hline
+9 & Open vSwitch Version & 3.3.4 (kernel datapath) \\ \hline
+10 & OpenFlow Version & 1.0 (\texttt{openflow.of\_01}; POX's default module) \\ \hline
+11 & POX Controller Version & POX 0.7.0 (gar) / Python 3.12.3 \\ \hline
+12 & Monitoring Integration & sFlow (sflowtool, built from source) for flow export \\ \hline
 \multicolumn{3}{|c|}{\textbf{Traffic Simulation}} \\ \hline
-14 & Normal Traffic & ICMP and TCP flows between Mininet hosts \\ \hline
-15 & Attack Traffic & SYN flood packets via scripted attack nodes \\ \hline
+13 & Normal Traffic & ICMP and periodic short TCP bursts between Mininet hosts \\ \hline
+14 & Attack Traffic & SYN flood, UDP flood, and low-rate (Shrew-style) pulses via hping3 \\ \hline
 \multicolumn{3}{|c|}{\textbf{ML and DL Frameworks}} \\ \hline
-16 & Python Version & Python 3.8.10 \\ \hline
-17 & Libraries & TensorFlow, Scikit-learn, Pandas, NumPy, Imbalanced-learn \\ \hline
+15 & Python Version & Python 3.12.3 \\ \hline
+16 & Libraries & TensorFlow 2.17, Scikit-learn, Pandas, NumPy, XGBoost, Imbalanced-learn, SciPy \\ \hline
 \multicolumn{3}{|c|}{\textbf{Dataset Used}} \\ \hline
-18 & Dataset & CICDDoS2019 \\ \hline
+17 & Dataset & CICDDoS2019 (detection), InSDN and a live sFlow capture (cross-dataset) \\ \hline
 \end{tabular}
 }
 \caption{Hardware and Software Setup for SDN-Based DDoS Detection Experiment}
@@ -846,8 +844,32 @@ Transformer (small) & 99.911 & 99.999 & 99.911 & 99.955 & 1.0000 & 0.9295 & 0.17
 
 The comparison with previously published baselines from \cite{narmadha2024detection} (Baseline~1) and \cite{saluja2024exploring} (Baseline~2) is retained in Figures~\ref{fig:performance_metrics}--\ref{fig:p3} for context. These external numbers are reported by their authors on their own splits and are therefore not a like-for-like comparison; the controlled comparison is the one in Table~\ref{tab:detection_results}. Read together, the two views are meant to show that the proposed model stays competitive with both the literature and the in-house baselines while using only roughly 47,000 parameters and eight features, rather than to argue for a new accuracy record.
 
+Table~\ref{tab:detection_results} reports a single run (seed 42) for comparability with the rest of the paper's tables. To confirm the ranking is not an artifact of that one run, every model was retrained across 5 seeds (42--46) on the identical split, varying only the training-time randomness (weight initialization, batch order, and tree random state); Table~\ref{tab:detection_stats} reports the resulting mean $\pm$ standard deviation for accuracy and MCC.
+
+\begin{table}[hbt!]
+\centering
+\caption{Accuracy and MCC, mean $\pm$ std over 5 training seeds (42--46), identical split. Accuracy in percent, MCC in $[0,1]$.}
+\label{tab:detection_stats}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{3.0cm}|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{MCC} \\
+\hline
+Random Forest & 99.981 $\pm$ 0.000 & 0.9834 $\pm$ 0.0002 \\ \hline
+XGBoost & 99.995 $\pm$ 0.000 & 0.9953 $\pm$ 0.0003 \\ \hline
+CNN (1D) & 99.926 $\pm$ 0.009 & 0.9408 $\pm$ 0.0064 \\ \hline
+LSTM & 99.961 $\pm$ 0.006 & 0.9670 $\pm$ 0.0045 \\ \hline
+CNN-LSTM (full) & 99.962 $\pm$ 0.007 & 0.9678 $\pm$ 0.0053 \\ \hline
+Transformer (small) & 99.931 $\pm$ 0.023 & 0.9445 $\pm$ 0.0171 \\ \hline
+\rowcolor{gray!20}
+\textbf{Proposed (8 feat.)} & \textbf{99.962 $\pm$ 0.007} & \textbf{0.9678 $\pm$ 0.0053} \\ \hline
+\end{tabular}
+\end{table}
+
+The ranking is stable across seeds: XGBoost remains the strongest model on MCC and the proposed model remains mid-pack, matching Table~\ref{tab:detection_results}'s single-run reading. A paired comparison against XGBoost -- the strongest baseline -- on MCC across the same 5 seeds gives a paired $t$-test of $p = 0.0003$, rejecting the null that the two models perform equally; a Wilcoxon signed-rank test on the same pairs gives $p = 0.0625$, which does not reach significance at $n=5$ (the maximum-power configuration of that test, all five differences in the same direction, is itself only borderline significant at this sample size). We read this as convergent evidence with a genuine caveat: the parametric test says the gap is real, the non-parametric one is underpowered rather than contradicting it, and five seeds is the practical minimum for either test to say anything at all. Both tests agree in direction and neither supports the proposed model being the more accurate detector, which is consistent with the paper's framing throughout -- the contribution is adaptivity, closed-loop mitigation, and cross-dataset evaluation at a measured cost, not a new accuracy record.
+
 \subsection{Optimization Analysis of the Proposed Model}
-Figure~\ref{fig:p4} reports the effect of the optimizer and batch size on the CNN-LSTM model on CICDDoS2019. Across the configurations tested, Adam gives higher and more stable accuracy and F1-score than SGD, and the smaller batch size of 64 edges out 128 (Adam with batch size~64 reaches 99.95\% accuracy and a 99.98\% F1-score). The sensitivity is modest, which indicates that the result does not hinge on a fragile choice of hyperparameters. We therefore use Adam with a batch size of 64 in all other experiments.
+Figure~\ref{fig:p4} reports the effect of the optimizer and batch size on the CNN-LSTM model on CICDDoS2019 (Adam/batch-64 is the 5-seed mean from Table~\ref{tab:detection_stats}; the other three configurations are single runs at seed 42 on the same split). Across the configurations tested, Adam gives higher accuracy and F1-score than SGD at both batch sizes (99.96\% vs.\ 99.92--99.93\% accuracy), and batch size 64 edges out 128 for a given optimizer. Adam with batch size~64 reaches 99.96\% accuracy and a 99.98\% F1-score. The gap between the best and worst configuration is under 0.05 percentage points, so the choice affects the result at the margin rather than qualitatively, but Adam is the consistently better optimizer here. We therefore use Adam with a batch size of 64 in all other experiments.
 \begin{figure*}[hbt!]
 \centering
 

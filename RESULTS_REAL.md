@@ -38,6 +38,38 @@ Proposed confusion (test): **TN 2,289 · FP 2 · FN 183 · TP 397,526**. ROC-AUC
 (MCC 0.995, 0.13 ms), RF and LSTM also beat it. Accuracy is saturated/non-discriminating;
 MCC separates the models. Confirms the paper's "adaptivity, not accuracy" framing.
 
+### Statistical rigor pass (tab:detection_stats) — REVISION_PLAN.md mandatory fix #4
+
+Run 2026-07-23 on `ai-gpu`, `experiments/src/experiments/train_detect_multiseed.py`.
+Same fixed split as above (seed=42, 2M rows); only training-time randomness varied
+across 5 seeds (42-46). Took ~11.5h wall-clock on CPU (memory grew slowly from 4%->9%
+across the run — likely TF graph-state accumulation across ~35 sequential model
+trainings in one process without `clear_session()`; didn't hit OOM on 48GB, didn't
+accelerate, so let it finish rather than kill+restart).
+
+| Model | Acc mean±std | MCC mean±std |
+|---|---|---|
+| Random Forest | 99.981±0.000 | 0.9834±0.0002 |
+| XGBoost | 99.995±0.000 | 0.9953±0.0003 |
+| CNN (1D) | 99.926±0.009 | 0.9408±0.0064 |
+| LSTM | 99.961±0.006 | 0.9670±0.0045 |
+| CNN-LSTM (full) | 99.962±0.007 | 0.9678±0.0053 |
+| Transformer | 99.931±0.023 | 0.9445±0.0171 |
+| **Proposed (8 feat.)** | 99.962±0.007 | 0.9678±0.0053 |
+
+Ranking matches the single-run Table 1 exactly. Proposed vs. XGBoost on MCC (paired by
+seed): paired t-test p=0.0003 (significant), Wilcoxon signed-rank p=0.0625 (not
+significant at n=5, but underpowered rather than contradicting — all 5 differences
+same direction). Both point the same way: XGBoost is genuinely better on MCC, not by
+single-run luck.
+
+### Optimizer/batch sweep (Figure p4)
+
+Adam+batch64 = the 5-seed mean above (99.962% acc / 99.981% F1); the other three
+configs are single runs at seed 42 on the same split: Adam+128 = 99.960%/99.980%,
+SGD+64 = 99.932%/99.966%, SGD+128 = 99.922%/99.961%. Adam beats SGD at both batch
+sizes; batch 64 edges out 128 for a given optimizer; the spread is under 0.05pp.
+
 ## Phase 1 — Cross-dataset (tab:cross_dataset_results)
 
 | Train → Test | ZS Acc | ZS F1 | Adapt Acc | Adapt F1 |
