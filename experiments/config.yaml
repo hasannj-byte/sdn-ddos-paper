@@ -75,7 +75,13 @@ cross_dataset:
 sdn:
   controller_ip: 127.0.0.1
   controller_port: 6633
-  detect_window: 50        # flows aggregated per source before a decision
+  detect_window_seconds: 1.0    # wall-clock window per source before a decision --
+                                 # time-based, not packet-count-based: a fixed packet
+                                 # count closes almost instantly under Mininet's virtual
+                                 # switching regardless of real send rate, which made
+                                 # live Flow Duration/Flow Packets/s uninformative
+                                 # (see pox_mitigation.py docstring and Threats to Validity)
+  detect_window_min_packets: 2  # skip classifying a window with fewer packets than this
   detect_threshold: 0.8    # mean attack-probability above which a source is mitigated
   mitigation: drop         # drop | rate_limit (rate_limit via OVS meters is a
                            # documented follow-up -- pox_mitigation.py always

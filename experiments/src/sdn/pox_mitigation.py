@@ -12,11 +12,16 @@ Behaviour (paper, Section: Closed-Loop Detection and Mitigation):
     forwarding flow) so attack traffic keeps generating Packet-Ins until it is
     mitigated -- this is what makes "Packet-In/s collapses after mitigation" a
     real measurement rather than an artifact of some other forwarding component.
-  * count Packet-In messages per source over a window (config: sdn.detect_window)
-    and fold each into a per-source flow-feature aggregator (SFlowAggregator)
-  * once a window's worth of packets has arrived for a source, build its
-    8-feature vector, scale it with the SAME StandardScaler fit at training
-    time, and classify
+  * count Packet-In messages per source and fold each into a per-source
+    flow-feature aggregator (SFlowAggregator); a source's window closes after
+    sdn.detect_window_seconds of wall-clock time (not a fixed packet count --
+    see the note in SFlowAggregator/pop_for_source about why: a fixed count
+    closes almost instantly for any source under Mininet's virtual switching,
+    regardless of its real send rate, which made Flow Duration/Flow Packets/s
+    uninformative for classification)
+  * once a source's window closes (and it has at least sdn.detect_window_min_packets),
+    build its 8-feature vector, scale it with the SAME StandardScaler fit at
+    training time, and classify
   * if mean attack-probability >= sdn.detect_threshold, install an OpenFlow
     drop rule for that source, with a hard timeout so it can recover
   * record time-to-detect, time-to-mitigate, and a 1s Packet-In-rate series, to
@@ -66,9 +71,21 @@ class MitigationEngine:
 
         self.packetin_count = 0
         self.packetin_per_src = defaultdict(int)
+        self.window_start = {}              # src -> wall-clock time of its window's first packet
         self.mitigated = {}                 # src -> install time
         self.events = []                    # timeline of (ts, kind, src, detail)
         self.packetin_samples = []          # [(ts, count_since_last_sample), ...]
+
+    def window_ready(self, src: str, now: float) -> bool:
+        """True once src's current window has run for detect_window_seconds
+        and accumulated at least detect_window_min_packets -- a time-based
+        close, not a packet-count-based one (see module docstring)."""
+        start = self.window_start.get(src)
+        if start is None:
+            return False
+        window_s = self.cfg["sdn"].get("detect_window_seconds", 1.0)
+        min_pkts = self.cfg["sdn"].get("detect_window_min_packets", 2)
+        return (now - start) >= window_s and self.packetin_per_src[src] >= min_pkts
 
     # ---- detection on a per-source feature vector ----
     def classify_source(self, src: str, feats: dict) -> float:
@@ -161,6 +178,9 @@ def launch(config="config.yaml", results="results/mitigation_runtime.json",
             flood(event)  # let ARP etc. through so hosts can resolve each other
             return
         src = str(ip.srcip)
+        now = time.time()
+        if src not in engine_obj.window_start:
+            engine_obj.window_start[src] = now
         engine_obj.packetin_per_src[src] += 1
 
         if src in engine_obj.mitigated:
@@ -169,14 +189,14 @@ def launch(config="config.yaml", results="results/mitigation_runtime.json",
         tcp = packet.find("tcp")
         sample = {
             "src": src, "dst": str(ip.dstip), "proto": ip.protocol,
-            "ts": time.time(), "length": ip.iplen, "direction": "fwd",
+            "ts": now, "length": ip.iplen, "direction": "fwd",
             "tcp_flags": int(tcp.flags) if tcp else 0,
             "tcp_window": int(tcp.win) if tcp else 0,
             "tcp_hdr_len": int(tcp.hdr_len) if tcp else 0,
         }
         engine_obj.agg.update(sample)
 
-        if use_model and engine_obj.packetin_per_src[src] >= cfg["sdn"]["detect_window"]:
+        if use_model and engine_obj.window_ready(src, now):
             feats = engine_obj.agg.pop_for_source(src)
             if feats is not None:
                 prob = engine_obj.classify_source(src, feats)
@@ -184,6 +204,7 @@ def launch(config="config.yaml", results="results/mitigation_runtime.json",
                 if engine_obj.should_mitigate(prob):
                     install_block(event, src)
             engine_obj.packetin_per_src[src] = 0
+            engine_obj.window_start[src] = now  # start the next window
 
         flood(event)
 

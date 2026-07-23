@@ -73,25 +73,32 @@ def write_hosts_file(net, attack_kind: str, out_dir: str) -> str:
 
 
 def generate_benign(net, duration: int, out_dir: str, label: str,
-                     rate_mbps: float = 1.0, packet_len: int = 200) -> None:
-    """Light ICMP + bandwidth-capped, small-packet UDP iperf between benign
-    hosts, output captured to files so goodput/RTT can be parsed after the
-    run (previously discarded). Deliberately modest (rather than unbounded
-    TCP, which saturates the link and floods the controller at the same
-    order of magnitude as an actual attack under our flood-only forwarding)
-    AND small-packet (rather than iperf's default MTU-sized ~1470B UDP
-    datagrams, which -- diagnosed via live feature dumps against the
-    training scaler's fitted stats -- read as statistically closer to
-    CICDDoS2019's large-payload reflection-attack families than to its own
-    benign class) so this represents light background traffic rather than
-    an accidentally attack-shaped stream."""
+                     burst_bytes: str = "50K", interval_s: int = 2) -> None:
+    """Light ICMP + periodic short TCP bursts between benign hosts, output
+    captured to files so goodput/RTT can be parsed after the run (previously
+    discarded).
+
+    Deliberately genuine TCP (rather than UDP): live feature dumps showed the
+    model has essentially no signal to separate UDP benign traffic from
+    CICDDoS2019's own UDP-based attack families (DrDoS_UDP, UDP-Lag, plain
+    UDP flood), which all share the same zeroed-out ACK-flag-count and
+    initial-window fields that any UDP flow gets. Real TCP handshakes/ACKs/
+    windows are the feature axes the model actually has calibrated signal
+    on. Bursty rather than sustained (short transfers separated by a sleep)
+    so the aggregate rate stays modest under our flood-only forwarding
+    (see generate_benign's previous UDP version's rationale) while every
+    burst is still a real, properly-terminated TCP connection."""
     hosts = [h for h in net.hosts if h.name.startswith("h")]
     if len(hosts) >= 2:
         server, client = hosts[0], hosts[1]
-        server.cmd(f"iperf -s -u > {out_dir}/iperf_server_{label}.log &")
+        server.cmd(f"iperf -s > {out_dir}/iperf_server_{label}.log &")
         client.cmd(f"ping -c {duration} {server.IP()} > {out_dir}/ping_{label}.log &")
-        client.cmd(f"iperf -c {server.IP()} -u -b {rate_mbps}M -l {packet_len} -t {duration} "
-                    f"> {out_dir}/iperf_{label}.log &")
+        n_bursts = max(1, duration // interval_s)
+        client.cmd(
+            f"( for i in $(seq 1 {n_bursts}); do "
+            f"iperf -c {server.IP()} -n {burst_bytes} >> {out_dir}/iperf_{label}.log 2>&1; "
+            f"sleep {interval_s}; done ) &"
+        )
 
 
 def launch_attack(net, kind: str, target_ip: str, duration: int) -> None:
@@ -110,17 +117,25 @@ def launch_attack(net, kind: str, target_ip: str, duration: int) -> None:
             raise ValueError(f"unknown attack kind: {kind}")
 
 
-def parse_legit_traffic(out_dir: str, label: str) -> dict:
+def parse_legit_traffic(out_dir: str, label: str, expected_bursts: int | None = None) -> dict:
     """Parse the iperf/ping logs generate_benign() wrote into a goodput/RTT
     summary; None fields mean the log was missing or didn't match (e.g. no
-    benign traffic completed before the network was torn down)."""
-    result = {"goodput_mbps": None, "rtt_avg_ms": None}
+    benign traffic completed before the network was torn down).
+
+    Because generate_benign() now uses real TCP bursts, a completed iperf
+    summary line requires the connection to have actually been established
+    and acknowledged end to end -- unlike the UDP version's client-only send
+    report, `bursts_completed` here is a genuine delivery signal: a mitigated
+    (blocked) client's `iperf -c` calls simply never produce a summary line."""
+    result = {"goodput_mbps": None, "rtt_avg_ms": None, "bursts_completed": 0,
+              "bursts_expected": expected_bursts}
     try:
         with open(f"{out_dir}/iperf_{label}.log") as fh:
             text = fh.read()
-        m = re.search(r"([\d.]+)\s*Mbits/sec", text)
-        if m:
-            result["goodput_mbps"] = float(m.group(1))
+        rates = [float(v) for v in re.findall(r"([\d.]+)\s*Mbits/sec", text)]
+        if rates:
+            result["goodput_mbps"] = sum(rates) / len(rates)
+            result["bursts_completed"] = len(rates)
     except FileNotFoundError:
         pass
     try:
@@ -171,7 +186,7 @@ def main():
         CLI(net)
     net.stop()
 
-    legit = parse_legit_traffic(args.out_dir, args.label)
+    legit = parse_legit_traffic(args.out_dir, args.label, expected_bursts=max(1, args.duration // 2))
     save_json(legit, f"{args.out_dir}/legit_traffic_{args.label}.json")
     print(f"Legit traffic summary -> {args.out_dir}/legit_traffic_{args.label}.json: {legit}")
 
