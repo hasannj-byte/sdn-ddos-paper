@@ -1000,14 +1000,14 @@ SDN improves network adaptability through centralized control, but the same desi
 
 The model adapts to concept drift while it runs, using a drift trigger, a small replay buffer, and partial fine-tuning so that it tracks shifting traffic without being rebuilt. It operates in closed loop with a POX controller, installing an OpenFlow drop rule on a flagged source, and we report the operational cost of doing so on a real testbed rather than assuming it; the testbed run also surfaced that live classification did not reliably target the attacking hosts over the benign one, which we report as a limitation rather than smooth over. It is evaluated across datasets, trained on CICDDoS2019 and tested on InSDN and on live captures from a Mininet, POX, and Open vSwitch testbed, with the transfer gap and its recovery after a short adaptation step both reported. Throughout, balancing is confined to the training folds and results are reported on the natural class distribution with PR-AUC and MCC alongside accuracy, which removes the inflation that a leak-before-split protocol introduces.
 
-The detection accuracy on CICDDoS2019 is competitive with the strongest hybrids rather than a new record, and we state it as such. The contribution is that comparable detection quality is delivered together with adaptivity, an instrumented mitigation loop, and honest cross-dataset evaluation, each at a measured cost. The most pressing direction for future work is the adversarial robustness of the adaptive loop, since a model that learns online can also be misled online; scaling the testbed beyond single-host emulation and lowering the label requirement of the update step follow close behind. The implementation will be released to support replication, and the data availability statement below describes how to obtain the data used here.
+The detection accuracy on CICDDoS2019 is competitive with the strongest hybrids rather than a new record, and we state it as such. The contribution is that comparable detection quality is delivered together with adaptivity, an instrumented mitigation loop, and honest cross-dataset evaluation, each at a measured cost. The most pressing direction for future work is the adversarial robustness of the adaptive loop, since a model that learns online can also be misled online; scaling the testbed beyond single-host emulation and lowering the label requirement of the update step follow close behind. The implementation is publicly available to support replication, and the data availability statement below describes how to obtain the data used here.
 
 
 
 \clearpage
 \bmsubsection*{The Data Availability Statement}
 
-The data  can be obtained from the corresponding author upon request.
+The implementation, including preprocessing, model, and experiment code, is available at \url{https://github.com/hasannj-byte/sdn-ddos-paper}. CICDDoS2019 and InSDN are third-party datasets and are not redistributed here; both are publicly obtainable (CICDDoS2019 from the Canadian Institute for Cybersecurity, and via the non-gated mirror used in this work) under their respective terms, and the remaining data used here can be obtained from the corresponding author upon request.
 
 \bmsubsection*{Author Contributions Statement}
 
