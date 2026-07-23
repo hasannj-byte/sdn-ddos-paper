@@ -101,66 +101,87 @@ demonstrated necessity here (documented open item).
 
 ## Phase 3 — Closed-loop mitigation (tab:mitigation_results, tab:cross_dataset_results)
 
-Run 2026-07-23 on `ai-gpu` (Mininet 2.3.0 + Open vSwitch 3.3.4 + POX 0.7.0 "gar",
+Two runs, both on `ai-gpu` (Mininet + Open vSwitch + POX 0.7.0 "gar",
 Ubuntu 24.04.4, Python 3.12.3). Three attack types (SYN flood, UDP flood,
-low-rate/Shrew pulse) x defense off/on = 6 conditions, ~30s each, plus a
-separate ~45s sFlow capture for the cross-dataset testbed row.
+low-rate/Shrew pulse) x defense off/on = 6 conditions per run, ~30s each.
 
-**What's real and verified:** the closed-loop mechanism end to end — POX floods
-unclassified traffic (no cached forwarding flow), classifies each source once
-its window fills, installs a hard-drop OpenFlow rule within ~0.12ms of a
-positive classification, and flushes real telemetry on clean shutdown.
-Controller CPU/memory and Packet-In counts/rates are genuine measurements
-across all 6 conditions. Peak Packet-In/s falls ~15-20x once the defense is
-on (e.g. SYN: 632,647 -> 33,691).
+### v1 (2026-07-23 morning) — superseded, kept for provenance only
 
-**What's NOT reliable, and is now disclosed in the manuscript (Threats to
-Validity) rather than presented as a clean result:** live per-source
-classification. In every one of the 6 trials, the mitigated source was the
-benign traffic generator, not the actual attacking hosts. Root cause (found by
-dumping raw+scaled feature vectors and comparing against the training
-scaler's fitted stats): the live per-source window measures
-controller-observed packet-arrival timing, which is far faster than
-real-world send rate under Mininet's virtual switching, so live `Flow
-Duration`/`Flow Packets/s` collapse to near-constant, uninformative values
-after scaling — worsened by CICDDoS2019's own `Flow Packets/s` column being
-dominated by extreme outlier rows, which skews the fitted scaler itself. This
-is a structural mismatch between the live windowed approximation and
-CICFlowMeter's offline flow-timeout-based feature computation, not a bug to
-patch quickly; documented as the top item for future work.
+Real, but the controller used a fixed 50-packet detection window and UDP
+benign traffic. Found (via `POX_MITIGATION_DEBUG_FEATS=1` raw/scaled feature
+dumps): in every one of the 6 trials the mitigated source was the **benign**
+traffic generator, never the actual attacker. Root cause: the fixed-count
+window closed in ~1-2ms under Mininet's virtual switching regardless of real
+send rate, so live `Flow Duration` collapsed to values with no relationship
+to real flow durations; separately, UDP benign traffic shares CICDDoS2019's
+zeroed-out ACK-flag/init-window fields with its own UDP attack families,
+giving the model no real signal there either.
 
-Also disclosed: "Classify->rule (ms)" is inference+rule-install latency, not a
-verified attack-onset-to-response time (no independent attack-start marker
-exists in the log); "Client send (Mbps)" is the UDP client's self-reported
-send rate, not confirmed delivery (the server-side receive report never
-flushed before teardown).
+### v2 (2026-07-23 evening) — current, in the manuscript
 
-**Cross-dataset testbed row:** 146 flows captured via sflowtool (built from
-source — not packaged for Ubuntu 24.04) during a SYN-attack run, correctly
-labeled via a `topology_hosts.json` written by `topology.py` at `net.start()`.
-Evaluated on the *exact* committed model (verified by reproducing its
-TN/FP/FN/TP exactly before evaluating the new target) — the existing InSDN
-row was NOT touched or regenerated. Zero-shot acc/F1 0.233/0.000, adapted
-0.741/0.793 — same collapse-then-recover pattern as InSDN, though with only
-146 flows this is indicative, not precise, and plausibly a symptom of the
-same feature-window mismatch above rather than an independent finding.
+Two fixes applied and re-tested before the full re-run: (1) time-based
+detection windows (`sdn.detect_window_seconds=1.0`, replacing the fixed
+packet count) — verified live `Flow Duration` now reads ~1.0s as intended;
+(2) genuine periodic TCP bursts for benign traffic instead of UDP
+(`topology.py:generate_benign`). Result: **the false positive is completely
+gone** — zero mitigation events across all 6 conditions. But this reveals a
+second, independent problem: **the actual attacker is still never classified
+with enough confidence to trigger mitigation**, in any of the 3 attack types.
+Root cause (unchanged, now isolated as the sole remaining cause): CICDDoS2019's
+own `Flow Packets/s` column is dominated by extreme outlier rows, so the
+training-fit scaler's mean (~1.43M pkt/s) makes any live traffic's realistic
+packet rate read as "below average" rather than anomalous. Fixing this needs
+retraining with robust/outlier-aware scaling — which would put the
+already-verified Table 1/8 numbers at risk — so it's documented as the top
+remaining item, not attempted here.
 
-**Along the way, two real code bugs fixed (see git history for
+With zero mitigation events, the mitigation table's ON/OFF Packet-In-rate and
+goodput differences are honestly reported as run-to-run variance (nothing is
+actually being blocked either way), not a measured defense effect. The one
+clean, real number this run demonstrates: controller RSS rises ~510-520MB
+just from loading the model+scaler for classification, regardless of attack
+type — the actual measured cost of running the detector continuously. Added
+a `bursts_completed`/`bursts_expected` field (genuine TCP delivery signal,
+unlike the old UDP client's fire-and-forget send-only report) — shows
+legitimate TCP traffic is substantially disrupted by SYN/UDP floods regardless
+of defense state (3-4/15 bursts complete vs 15-16/15 under the low-rate attack).
+
+The rule-installation mechanism itself is not hypothetical — it fired
+correctly within ~0.12-0.13ms of a classification in the v1 run, before the
+fixes. v2 simply never exercises it, because no classification crosses
+threshold.
+
+**Cross-dataset testbed row (unaffected by the v1/v2 distinction above, since
+it uses the offline sflowtool pipeline, not live POX classification):** 146
+flows captured via sflowtool (built from source — not packaged for Ubuntu
+24.04), correctly labeled via `topology_hosts.json`. Evaluated on the *exact*
+committed model (verified by reproducing its TN/FP/FN/TP exactly first) — the
+existing InSDN row was NOT touched. Zero-shot acc/F1 0.233/0.000, adapted
+0.741/0.793 — same collapse-then-recover pattern as InSDN; with only 146
+flows this is indicative, not precise, and plausibly a symptom of the same
+outlier-scaling issue rather than an independent finding.
+
+**Along the way, real code bugs fixed (see git history for
 `src/sdn/pox_mitigation.py`, `topology.py`, `feature_extractor.py`):** the
 controller never forwarded/flooded any packet (would have produced all-zero
-data — no traffic, not even ARP, would have crossed the switch); and
+data); OpenFlow 1.3 vs POX's OF1.0-only default meant the switch never
+connected; POX had no SIGTERM/SIGINT handler so metrics never flushed;
 `parse_sflowtool_line`'s field indices were wrong (`length` read the
-ethertype field, not a length; `tcp_flags` used decimal parsing on
-sflowtool's hex-prefixed output, always yielding 0) — both verified against a
-real capture before trusting them.
+ethertype field; `tcp_flags` used decimal parsing on hex output) — all
+verified against real captures before trusting them.
 
 ## Open items before final submission
-1. Fix the live feature-window mismatch (proper flow-timeout-based windowing
-   instead of fixed packet counts) and re-run Phase 3 for a mitigation result
-   that actually targets the attacker — currently an honest limitation, not
-   a solved problem.
+1. Retrain with outlier-robust feature scaling to close the remaining
+   mitigation-targeting gap — the only way to get a Phase 3 result where the
+   defense actually blocks the attacker. Would require re-verifying Table 1/8.
 2. Re-verify against the official CIC release; the paper notes a 2M-row representative sample.
 3. Replay buffer value not demonstrated (no forgetting to rescue) — stress-test or soften claim.
-4. Optimizer/batch sweep (Fig p4) was not re-run; only Adam+batch64 reported from this run.
-5. Get a real UDP delivery/loss measurement for "legit goodput" (currently send-rate only).
-6. Implement OVS meter-based rate-limiting (`config.yaml: sdn.mitigation`) — currently drop-only.
+4. Get a real TCP delivery/loss measurement beyond bursts_completed (e.g. per-burst latency).
+5. Implement OVS meter-based rate-limiting (`config.yaml: sdn.mitigation`) — currently drop-only;
+   would also require moving off POX's default OpenFlow 1.0 module.
+6. GPU: RTX 5080 (Blackwell, compute capability 12.0a) not usable by TensorFlow 2.21
+   (latest available) — confirmed via strace that all CUDA/cuDNN libraries load fine
+   individually and `cuInit`/device enumeration succeed at the driver level, but TF's
+   GPU backend still rejects the device. Likely needs TF built from source with explicit
+   sm_120a kernels, or a newer TF release; not attempted (multi-hour, uncertain payoff).
+   All experiments in this file ran on CPU.
