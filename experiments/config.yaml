@@ -24,7 +24,7 @@ data:
   insdn_dir: data/insdn                        # InSDN (HF mirror Sharukesh/INSDN)
   insdn_label_column: target                   # InSDN binary label (0=Normal, 1=attack)
   insdn_benign_label: "0"
-  testbed_capture: /path/to/testbed_flows.csv  # produced by sdn/feature_extractor.py
+  testbed_capture: results/testbed_flows.csv   # produced by sdn/feature_extractor.py
 
 split:
   test_size: 0.20
@@ -77,7 +77,9 @@ sdn:
   controller_port: 6633
   detect_window: 50        # flows aggregated per source before a decision
   detect_threshold: 0.8    # mean attack-probability above which a source is mitigated
-  mitigation: rate_limit   # drop | rate_limit
+  mitigation: drop         # drop | rate_limit (rate_limit via OVS meters is a
+                           # documented follow-up -- pox_mitigation.py always
+                           # installs a hard drop rule for now)
   meter_rate_kbps: 1000    # rate-limit band when mitigation == rate_limit
   rule_hard_timeout: 30    # seconds; lets a source recover if it stops misbehaving
 

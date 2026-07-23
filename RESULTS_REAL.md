@@ -67,12 +67,68 @@ to ~1.0 with no forgetting. Replay ≈ no-replay (both ~0.931, forgetting ≈ 0)
 fine-tuning causes no forgetting to rescue, so the buffer is a cheap safeguard, not a
 demonstrated necessity here (documented open item).
 
-## Phase 3 — Closed-loop mitigation (tab:mitigation_results)
-**Pending** — needs the Mininet/POX/Open vSwitch testbed on the VM. Marked `pending` in
-the paper (mitigation table + the live-testbed cross-dataset row).
+## Phase 3 — Closed-loop mitigation (tab:mitigation_results, tab:cross_dataset_results)
+
+Run 2026-07-23 on `ai-gpu` (Mininet 2.3.0 + Open vSwitch 3.3.4 + POX 0.7.0 "gar",
+Ubuntu 24.04.4, Python 3.12.3). Three attack types (SYN flood, UDP flood,
+low-rate/Shrew pulse) x defense off/on = 6 conditions, ~30s each, plus a
+separate ~45s sFlow capture for the cross-dataset testbed row.
+
+**What's real and verified:** the closed-loop mechanism end to end — POX floods
+unclassified traffic (no cached forwarding flow), classifies each source once
+its window fills, installs a hard-drop OpenFlow rule within ~0.12ms of a
+positive classification, and flushes real telemetry on clean shutdown.
+Controller CPU/memory and Packet-In counts/rates are genuine measurements
+across all 6 conditions. Peak Packet-In/s falls ~15-20x once the defense is
+on (e.g. SYN: 632,647 -> 33,691).
+
+**What's NOT reliable, and is now disclosed in the manuscript (Threats to
+Validity) rather than presented as a clean result:** live per-source
+classification. In every one of the 6 trials, the mitigated source was the
+benign traffic generator, not the actual attacking hosts. Root cause (found by
+dumping raw+scaled feature vectors and comparing against the training
+scaler's fitted stats): the live per-source window measures
+controller-observed packet-arrival timing, which is far faster than
+real-world send rate under Mininet's virtual switching, so live `Flow
+Duration`/`Flow Packets/s` collapse to near-constant, uninformative values
+after scaling — worsened by CICDDoS2019's own `Flow Packets/s` column being
+dominated by extreme outlier rows, which skews the fitted scaler itself. This
+is a structural mismatch between the live windowed approximation and
+CICFlowMeter's offline flow-timeout-based feature computation, not a bug to
+patch quickly; documented as the top item for future work.
+
+Also disclosed: "Classify->rule (ms)" is inference+rule-install latency, not a
+verified attack-onset-to-response time (no independent attack-start marker
+exists in the log); "Client send (Mbps)" is the UDP client's self-reported
+send rate, not confirmed delivery (the server-side receive report never
+flushed before teardown).
+
+**Cross-dataset testbed row:** 146 flows captured via sflowtool (built from
+source — not packaged for Ubuntu 24.04) during a SYN-attack run, correctly
+labeled via a `topology_hosts.json` written by `topology.py` at `net.start()`.
+Evaluated on the *exact* committed model (verified by reproducing its
+TN/FP/FN/TP exactly before evaluating the new target) — the existing InSDN
+row was NOT touched or regenerated. Zero-shot acc/F1 0.233/0.000, adapted
+0.741/0.793 — same collapse-then-recover pattern as InSDN, though with only
+146 flows this is indicative, not precise, and plausibly a symptom of the
+same feature-window mismatch above rather than an independent finding.
+
+**Along the way, two real code bugs fixed (see git history for
+`src/sdn/pox_mitigation.py`, `topology.py`, `feature_extractor.py`):** the
+controller never forwarded/flooded any packet (would have produced all-zero
+data — no traffic, not even ARP, would have crossed the switch); and
+`parse_sflowtool_line`'s field indices were wrong (`length` read the
+ethertype field, not a length; `tcp_flags` used decimal parsing on
+sflowtool's hex-prefixed output, always yielding 0) — both verified against a
+real capture before trusting them.
 
 ## Open items before final submission
-1. Run Phase 3 (mitigation) on the VM testbed to fill the last table + testbed row.
+1. Fix the live feature-window mismatch (proper flow-timeout-based windowing
+   instead of fixed packet counts) and re-run Phase 3 for a mitigation result
+   that actually targets the attacker — currently an honest limitation, not
+   a solved problem.
 2. Re-verify against the official CIC release; the paper notes a 2M-row representative sample.
 3. Replay buffer value not demonstrated (no forgetting to rescue) — stress-test or soften claim.
 4. Optimizer/batch sweep (Fig p4) was not re-run; only Adam+batch64 reported from this run.
+5. Get a real UDP delivery/loss measurement for "legit goodput" (currently send-rate only).
+6. Implement OVS meter-based rate-limiting (`config.yaml: sdn.mitigation`) — currently drop-only.
